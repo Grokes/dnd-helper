@@ -1,0 +1,83 @@
+:root {
+  --bg: #0f1217;
+  --panel: #131820;
+  --panel-soft: #171d26;
+  --text: #eef3fb;
+  --muted: #8390a4;
+  --muted-strong: #a8b3c3;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --accent: #d16246;
+  --accent-strong: #f08a69;
+  --accent-soft: #8ca8ff;
+  --steel: #9fb4ff;
+  --heading: 'Alegreya', 'Georgia', serif;
+  --body: 'Manrope', 'Segoe UI', sans-serif;
+
+  font-family: var(--body);
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top, rgba(95, 127, 216, 0.16), transparent 25%),
+    linear-gradient(180deg, #0c0f14 0%, #131821 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--heading);
+  line-height: 1;
+  color: var(--text);
+}
+
+h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  letter-spacing: -0.03em;
+}
+
+h3 {
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+p,
+li,
+dd,
+dt,
+small,
+span,
+a {
+  font-size: 1rem;
+}
