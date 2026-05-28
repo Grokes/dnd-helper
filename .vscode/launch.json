@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend (.NET)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "backend-prepare",
+      "program": "${workspaceFolder}/Backend/dnd-helper/bin/Debug/net8.0/dnd-helper.dll",
+      "cwd": "${workspaceFolder}/Backend/dnd-helper",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "stopAtEntry": false,
+      "postDebugTask": "shutdown-stack"
+    },
+    {
+      "name": "Frontend (Vite)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"],
+      "cwd": "${workspaceFolder}/Frontend/dnd-helper",
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "DND Full Stack",
+      "configurations": ["Backend (.NET)", "Frontend (Vite)"],
+      "stopAll": true
+    }
+  ]
+}

@@ -73,7 +73,7 @@ export function formatSkillLevel(skill: SkillLevel) {
 }
 
 export function getCharacterPortrait(name: string, race: string, className: string) {
-  const seed = hashString(`${name}-${race}-${className}`)
+  const seed = hashString(`${race}-${className}`)
   const hueA = seed % 360
   const hueB = (seed + 60) % 360
   const initials = name

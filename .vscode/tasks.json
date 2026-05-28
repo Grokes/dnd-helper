@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "infra-up",
+      "type": "shell",
+      "command": "docker compose up -d postgres mongo",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend-build",
+      "type": "shell",
+      "command": "dotnet build",
+      "options": {
+        "cwd": "${workspaceFolder}/Backend/dnd-helper"
+      },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "backend-prepare",
+      "dependsOrder": "sequence",
+      "dependsOn": ["infra-up", "backend-build"],
+      "problemMatcher": []
+    },
+    {
+      "label": "infra-down",
+      "type": "shell",
+      "command": "docker compose down",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "kill-app-ports",
+      "type": "shell",
+      "command": "for p in 5026 5173; do pid=$(fuser -n tcp $p 2>/dev/null | tr -dc '0-9 ' | awk '{print $1}'); if [ -n \"$pid\" ]; then kill $pid; fi; done",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "shutdown-stack",
+      "dependsOrder": "sequence",
+      "dependsOn": ["kill-app-ports", "infra-down"],
+      "problemMatcher": []
+    }
+  ]
+}

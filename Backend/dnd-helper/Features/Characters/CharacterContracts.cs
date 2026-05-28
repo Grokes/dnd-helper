@@ -33,6 +33,14 @@ public sealed record UpdateCharacterRequest(
 public sealed record BaseAbilityScoreDto(string Key, int Score);
 
 public sealed record SkillLevelDto(string SkillId, int Level);
+public sealed record SpellSlotDto(int SpellLevel, int Slots);
+
+public sealed record CalculationTraceEntryDto(
+    string Target,
+    string Source,
+    string Reason,
+    int Value,
+    string Operation);
 
 public sealed record CharacterSummaryDto(
     Guid Id,
@@ -42,6 +50,7 @@ public sealed record CharacterSummaryDto(
     string Subclass,
     int Level,
     int ArmorClass,
+    string? WeaponDamage,
     int HitPoints,
     int PassivePerception,
     List<SkillLevelDto> Skills);
@@ -60,6 +69,7 @@ public sealed record CharacterDto(
     string Background,
     string Alignment,
     int ArmorClass,
+    string? WeaponDamage,
     int HitPoints,
     int Speed,
     int ProficiencyBonus,
@@ -73,8 +83,12 @@ public sealed record CharacterDto(
     List<AbilityScoreDto> Abilities,
     List<SavingThrowBonusDto> SavingThrows,
     List<SkillLevelDto> Skills,
-    List<string> Spells,
+    List<SpellSlotDto> SpellSlots,
+    List<string> KnownSpells,
+    List<string> PreparedSpells,
     List<string> Inventory,
+    List<string> ActiveEffects,
+    List<CalculationTraceEntryDto> CalculationTrace,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc);
 

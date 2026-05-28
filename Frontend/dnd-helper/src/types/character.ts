@@ -28,6 +28,7 @@ export type CharacterSummary = {
   subclass: string
   level: number
   armorClass: number
+  weaponDamage?: string | null
   hitPoints: number
   passivePerception: number
   skills: SkillLevel[]
@@ -50,7 +51,17 @@ export type Character = CharacterSummary & {
   skillProficiencies: string[]
   abilities: AbilityScore[]
   savingThrows: SavingThrowBonus[]
-  spells: string[]
+  spellSlots: Array<{ spellLevel: number; slots: number }>
+  knownSpells: string[]
+  preparedSpells: string[]
+  activeEffects: string[]
+  calculationTrace: Array<{
+    target: string
+    source: string
+    reason: string
+    value: number
+    operation: string
+  }>
   inventory: string[]
   createdAtUtc: string
   updatedAtUtc: string
@@ -106,6 +117,8 @@ export type RaceOption = {
   skillChoiceRule: SkillChoiceRule | null
   details: FeatureDetail[]
   summary: string
+  grantedLanguages?: string[]
+  description?: string
 }
 
 export type ClassOption = {
@@ -117,6 +130,8 @@ export type ClassOption = {
   skillChoiceRule: SkillChoiceRule
   details: FeatureDetail[]
   summary: string
+  description?: string
+  proficiencyGroups?: Record<string, string[]>
 }
 
 export type BackgroundOption = {
@@ -125,12 +140,66 @@ export type BackgroundOption = {
   grantedSkillProficiencies: string[]
   details: FeatureDetail[]
   summary: string
+  description?: string
 }
 
 export type CharacterOptions = {
   races: RaceOption[]
   classes: ClassOption[]
   backgrounds: BackgroundOption[]
+  skillAbilityMap?: Record<string, string>
+}
+
+export type EquipmentCatalogItem = {
+  slug: string
+  name: string
+  category?: string
+  subcategory?: string
+  costValue?: number
+  costUnit?: string
+  weightLb?: number
+  damageDice?: string
+  damageType?: string
+  attackAbility?: string
+  weaponProperties?: string[]
+  isTwoHanded?: boolean
+  isShield?: boolean
+  armorClassBase?: number
+  equipSlot?: string
+}
+
+export type MonsterCatalogItem = {
+  slug: string
+  name: string
+  size?: string
+  creatureType?: string
+  alignment?: string
+  challengeRating?: number
+  armorClass?: number
+  hitPoints?: number
+  hitDice?: string
+  speed?: number
+  attackName?: string
+  attackBonus?: number
+  damageDice?: string
+  damageBonus?: number
+  damageType?: string
+}
+
+export type RuleSpellItem = {
+  slug: string
+  name: string
+  classSlugs?: string[]
+  spellLevel?: number
+  minCharacterLevel?: number
+  summary?: string
+  description?: string
+}
+
+export type RuleConditionItem = {
+  slug: string
+  name: string
+  description: string
 }
 
 export type ApiValidationError = {
@@ -177,10 +246,6 @@ export type UpdateRoomMemberRolePayload = {
   role: string
 }
 
-export type UpdateRoomSessionPayload = {
-  activeMemberUserId: string | null
-}
-
 export type RoomMemberCharacter = {
   id: string
   name: string
@@ -196,7 +261,8 @@ export type RoomMember = {
   isOwner: boolean
   isOnline: boolean
   joinedAtUtc: string
-  character: RoomMemberCharacter | null
+  characters: RoomMemberCharacter[]
+  inventory: string[]
 }
 
 export type RoomSummary = {
@@ -209,16 +275,6 @@ export type RoomSummary = {
   connectedMemberCount: number
   currentUserRole: string
   isOwner: boolean
-  activeMemberDisplayName: string | null
-  activeCharacterName: string | null
-}
-
-export type RoomSession = {
-  activeMemberUserId: string | null
-  activeMemberDisplayName: string | null
-  activeCharacterName: string | null
-  updatedAtUtc: string | null
-  connectedMembers: number
 }
 
 export type Room = {
@@ -229,7 +285,32 @@ export type Room = {
   ownerDisplayName: string
   currentUserRole: string
   canManageMembers: boolean
-  canManageSession: boolean
-  session: RoomSession
+  connectedMembers: number
   members: RoomMember[]
+}
+
+export type RoomMonster = {
+  id: string
+  monsterSlug: string
+  name: string
+  challengeRating: number
+  armorClass: number
+  maxHitPoints: number
+  currentHitPoints: number
+  attackName: string
+  attackBonus: number
+  damageDice: string
+  damageBonus: number
+  damageType: string
+}
+
+export type MonsterDamageRoll = {
+  monsterId: string
+  monsterName: string
+  attackName: string
+  damageExpression: string
+  diceResult: number
+  damageBonus: number
+  totalDamage: number
+  rolledAtUtc: string
 }

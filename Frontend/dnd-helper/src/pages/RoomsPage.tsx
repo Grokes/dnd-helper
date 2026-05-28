@@ -14,6 +14,7 @@ export function RoomsPage() {
   const [rooms, setRooms] = useState<RoomSummary[]>([])
   const [roomName, setRoomName] = useState('')
   const [joinCode, setJoinCode] = useState('')
+  const [mode, setMode] = useState<'create' | 'join'>('create')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -112,32 +113,32 @@ export function RoomsPage() {
         </div>
       </section>
 
-      <section className="grid two-columns">
-        <article className="surface-card">
-          <h3>Создать комнату</h3>
+      <section className="surface-card">
+        <div className="skill-pick-grid">
+          <button type="button" className={`skill-toggle ${mode === 'create' ? 'selected' : ''}`} onClick={() => setMode('create')}>
+            Создать комнату
+          </button>
+          <button type="button" className={`skill-toggle ${mode === 'join' ? 'selected' : ''}`} onClick={() => setMode('join')}>
+            Подключиться
+          </button>
+        </div>
+        {mode === 'create' ? (
           <form className="form-grid compact" onSubmit={handleCreateRoom}>
             <label className="full-span">
               Название комнаты
               <input value={roomName} onChange={(event) => setRoomName(event.target.value)} required />
             </label>
-            <button type="submit" className="primary-button button-reset" disabled={isSubmitting}>
-              Создать
-            </button>
+            <button type="submit" className="primary-button button-reset" disabled={isSubmitting}>Создать</button>
           </form>
-        </article>
-
-        <article className="surface-card">
-          <h3>Подключиться по коду</h3>
+        ) : (
           <form className="form-grid compact" onSubmit={handleJoinRoom}>
             <label className="full-span">
               Код комнаты
               <input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} required />
             </label>
-            <button type="submit" className="secondary-button button-reset" disabled={isSubmitting}>
-              Подключиться
-            </button>
+            <button type="submit" className="secondary-button button-reset" disabled={isSubmitting}>Подключиться</button>
           </form>
-        </article>
+        )}
       </section>
 
       {error ? <section className="surface-card error-state">{error}</section> : null}
@@ -167,12 +168,6 @@ export function RoomsPage() {
                     <p className="muted">Код: {room.joinCode}</p>
                     <p className="muted">Участников: {room.memberCount}</p>
                     <p className="muted">В сети: {room.connectedMemberCount}</p>
-                    <p className="muted">
-                      Сейчас активен:{' '}
-                      {room.activeMemberDisplayName
-                        ? `${room.activeMemberDisplayName}${room.activeCharacterName ? ` • ${room.activeCharacterName}` : ''}`
-                        : 'ещё не выбран'}
-                    </p>
                   </div>
 
                   <Link to={`/rooms/${room.id}`} className="text-link">

@@ -1,5 +1,6 @@
 using dnd_helper.Features.Auth;
 using dnd_helper.Features.Characters;
+using System.Text.Json;
 
 namespace dnd_helper.Features.Rooms;
 
@@ -11,6 +12,7 @@ public static class RoomMemberRoles
 
 public sealed class RoomEntity
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string JoinCode { get; set; } = string.Empty;
@@ -18,15 +20,11 @@ public sealed class RoomEntity
     public string OwnerUserId { get; set; } = string.Empty;
     public ApplicationUser? OwnerUser { get; set; }
     public DateTime CreatedAtUtc { get; set; }
-    public string? ActiveMemberUserId { get; set; }
-    public DateTime? SessionUpdatedAtUtc { get; set; }
     public List<RoomMembershipEntity> Members { get; set; } = [];
 
     public RoomSummaryDto ToSummaryDto(string currentUserId)
     {
         var currentMembership = Members.FirstOrDefault(member => member.UserId == currentUserId);
-        var activeMember = Members.FirstOrDefault(member => member.UserId == ActiveMemberUserId);
-
         return new RoomSummaryDto(
             Id,
             Name,
@@ -36,17 +34,13 @@ public sealed class RoomEntity
             Members.Count,
             Members.Count(IsMemberOnline),
             currentMembership?.Role ?? RoomMemberRoles.Player,
-            OwnerUserId == currentUserId,
-            activeMember?.User?.DisplayName,
-            activeMember?.Character?.Name);
+            OwnerUserId == currentUserId);
     }
 
     public RoomDto ToDto(string currentUserId)
     {
         var currentMembership = Members.FirstOrDefault(member => member.UserId == currentUserId);
         var canManageRoom = currentMembership?.Role == RoomMemberRoles.GameMaster || OwnerUserId == currentUserId;
-        var activeMember = Members.FirstOrDefault(member => member.UserId == ActiveMemberUserId);
-
         return new RoomDto(
             Id,
             Name,
@@ -55,13 +49,7 @@ public sealed class RoomEntity
             OwnerUser?.DisplayName ?? "Мастер",
             currentMembership?.Role ?? RoomMemberRoles.Player,
             canManageRoom,
-            canManageRoom,
-            new RoomSessionDto(
-                ActiveMemberUserId,
-                activeMember?.User?.DisplayName,
-                activeMember?.Character?.Name,
-                SessionUpdatedAtUtc,
-                Members.Count(IsMemberOnline)),
+            Members.Count(IsMemberOnline),
             Members
                 .OrderByDescending(member => member.Role == RoomMemberRoles.GameMaster)
                 .ThenBy(member => member.User?.DisplayName ?? member.UserId)
@@ -72,14 +60,15 @@ public sealed class RoomEntity
                     member.UserId == OwnerUserId,
                     IsMemberOnline(member),
                     member.JoinedAtUtc,
-                    member.Character is null
-                        ? null
-                        : new RoomMemberCharacterDto(
-                            member.Character.Id,
-                            member.Character.Name,
-                            member.Character.Race,
-                            member.Character.ClassName,
-                            member.Character.Level)))
+                    member.Characters
+                        .Select(characterLink => new RoomMemberCharacterDto(
+                            characterLink.Character!.Id,
+                            characterLink.Character.Name,
+                            characterLink.Character.Race,
+                            characterLink.Character.ClassName,
+                            characterLink.Character.Level))
+                        .ToList(),
+                    DeserializeInventory(member.InventoryJson)))
                 .ToList());
     }
 
@@ -92,6 +81,11 @@ public sealed class RoomEntity
 
         return member.LastSeenAtUtc.Value >= DateTime.UtcNow.AddMinutes(-2);
     }
+
+    private static List<string> DeserializeInventory(string source)
+    {
+        return JsonSerializer.Deserialize<List<string>>(source, JsonOptions) ?? [];
+    }
 }
 
 public sealed class RoomMembershipEntity
@@ -100,9 +94,18 @@ public sealed class RoomMembershipEntity
     public RoomEntity? Room { get; set; }
     public string UserId { get; set; } = string.Empty;
     public ApplicationUser? User { get; set; }
-    public Guid? CharacterId { get; set; }
-    public CharacterEntity? Character { get; set; }
+    public List<RoomMembershipCharacterEntity> Characters { get; set; } = [];
     public string Role { get; set; } = RoomMemberRoles.Player;
+    public string InventoryJson { get; set; } = "[]";
     public DateTime JoinedAtUtc { get; set; }
     public DateTime? LastSeenAtUtc { get; set; }
+}
+
+public sealed class RoomMembershipCharacterEntity
+{
+    public Guid RoomId { get; set; }
+    public string UserId { get; set; } = string.Empty;
+    public Guid CharacterId { get; set; }
+    public RoomMembershipEntity? Membership { get; set; }
+    public CharacterEntity? Character { get; set; }
 }

@@ -11,8 +11,8 @@ public sealed record JoinRoomByInviteRequest(string InviteToken);
 public sealed record SelectRoomCharacterRequest(Guid? CharacterId);
 
 public sealed record UpdateRoomMemberRoleRequest(string Role);
-
-public sealed record UpdateRoomSessionRequest(string? ActiveMemberUserId);
+public sealed record AddRoomMonsterRequest(string MonsterSlug);
+public sealed record ApplyMonsterDamageRequest(int Damage);
 
 public sealed record RoomSummaryDto(
     Guid Id,
@@ -23,9 +23,7 @@ public sealed record RoomSummaryDto(
     int MemberCount,
     int ConnectedMemberCount,
     string CurrentUserRole,
-    bool IsOwner,
-    string? ActiveMemberDisplayName,
-    string? ActiveCharacterName);
+    bool IsOwner);
 
 public sealed record RoomMemberCharacterDto(Guid Id, string Name, string Race, string ClassName, int Level);
 
@@ -36,14 +34,8 @@ public sealed record RoomMemberDto(
     bool IsOwner,
     bool IsOnline,
     DateTime JoinedAtUtc,
-    RoomMemberCharacterDto? Character);
-
-public sealed record RoomSessionDto(
-    string? ActiveMemberUserId,
-    string? ActiveMemberDisplayName,
-    string? ActiveCharacterName,
-    DateTime? UpdatedAtUtc,
-    int ConnectedMembers);
+    List<RoomMemberCharacterDto> Characters,
+    List<string> Inventory);
 
 public sealed record RoomDto(
     Guid Id,
@@ -53,6 +45,29 @@ public sealed record RoomDto(
     string OwnerDisplayName,
     string CurrentUserRole,
     bool CanManageMembers,
-    bool CanManageSession,
-    RoomSessionDto Session,
+    int ConnectedMembers,
     List<RoomMemberDto> Members);
+
+public sealed record RoomMonsterDto(
+    Guid Id,
+    string MonsterSlug,
+    string Name,
+    decimal ChallengeRating,
+    int ArmorClass,
+    int MaxHitPoints,
+    int CurrentHitPoints,
+    string AttackName,
+    int AttackBonus,
+    string DamageDice,
+    int DamageBonus,
+    string DamageType);
+
+public sealed record MonsterDamageRollDto(
+    Guid MonsterId,
+    string MonsterName,
+    string AttackName,
+    string DamageExpression,
+    int DiceResult,
+    int DamageBonus,
+    int TotalDamage,
+    DateTime RolledAtUtc);

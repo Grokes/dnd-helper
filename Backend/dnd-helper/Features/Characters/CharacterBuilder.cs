@@ -181,6 +181,7 @@ public static class CharacterBuilder
         return new CharacterComputationResult(
             race.Id,
             characterClass.Id,
+            string.Empty,
             background.Id,
             name.Trim(),
             race.Name,
@@ -191,15 +192,23 @@ public static class CharacterBuilder
             notes.Trim(),
             baseAbilities.ToList(),
             bonusAbilitySelections.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            raceSkillSelections.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            classSkillSelections.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             armorClass,
+            null,
             hitPoints,
             race.Speed,
             proficiencyBonus,
             passivePerception,
             finalAbilities,
             skills,
+            [],
             spells.Where(item => !string.IsNullOrWhiteSpace(item)).Select(item => item.Trim()).Distinct().ToList(),
-            inventory.Where(item => !string.IsNullOrWhiteSpace(item)).Select(item => item.Trim()).Distinct().ToList());
+            [],
+            inventory.Where(item => !string.IsNullOrWhiteSpace(item)).Select(item => item.Trim()).Distinct().ToList(),
+            [],
+            new Dictionary<string, object>(),
+            []);
     }
 
     public static List<SavingThrowBonusDto> BuildSavingThrows(
@@ -354,6 +363,7 @@ public static class CharacterBuilder
 public sealed record CharacterComputationResult(
     string RaceId,
     string ClassId,
+    string SubclassId,
     string BackgroundId,
     string Name,
     string Race,
@@ -364,12 +374,20 @@ public sealed record CharacterComputationResult(
     string Notes,
     List<BaseAbilityScoreDto> BaseAbilities,
     List<string> BonusAbilitySelections,
+    List<string> RaceSkillSelections,
+    List<string> ClassSkillSelections,
     int ArmorClass,
+    string? WeaponDamage,
     int HitPoints,
     int Speed,
     int ProficiencyBonus,
     int PassivePerception,
     List<AbilityScoreDto> Abilities,
     List<SkillLevelDto> Skills,
-    List<string> Spells,
-    List<string> Inventory);
+    List<SpellSlotDto> SpellSlots,
+    List<string> KnownSpells,
+    List<string> PreparedSpells,
+    List<string> Inventory,
+    List<string> ActiveEffects,
+    Dictionary<string, object> ComputedSnapshot,
+    List<CalculationTraceEntryDto> CalculationTrace);

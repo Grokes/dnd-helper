@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: dnd-postgres
+    environment:
+      POSTGRES_DB: dnd_helper
+      POSTGRES_USER: dnd
+      POSTGRES_PASSWORD: dndpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:7
+    container_name: dnd-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./Backend/dnd-helper
+    container_name: dnd-backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=dnd_helper;Username=dnd;Password=dndpass
+      MongoDb__ConnectionString: mongodb://mongo:27017
+      MongoDb__DatabaseName: dnd_helper_rules
+    depends_on:
+      - postgres
+      - mongo
+    ports:
+      - "5026:8080"
+
+  frontend:
+    build:
+      context: ./Frontend/dnd-helper
+    container_name: dnd-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:
+  mongo_data:

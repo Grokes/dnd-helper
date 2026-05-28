@@ -5,7 +5,7 @@ import { useAuth } from './components/AuthProvider'
 import { CharacterCreatePage } from './pages/CharacterCreatePage'
 import { CharacterDetailPage } from './pages/CharacterDetailPage'
 import { CharactersPage } from './pages/CharactersPage'
-import { HomePage } from './pages/HomePage'
+import { DataCheckPage } from './pages/DataCheckPage'
 import { LoginPage } from './pages/LoginPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { RegisterPage } from './pages/RegisterPage'
@@ -21,7 +21,7 @@ function App() {
   async function handleLogout() {
     await logout()
     setIsProfileMenuOpen(false)
-    navigate('/', { replace: true })
+    navigate('/login', { replace: true })
   }
 
   return (
@@ -36,9 +36,6 @@ function App() {
         </div>
 
         <nav className="header-nav" aria-label="Main navigation">
-          <NavLink to="/" end className="nav-item">
-            Главная
-          </NavLink>
           {user ? (
             <>
               <NavLink to="/characters" className="nav-item">
@@ -46,6 +43,9 @@ function App() {
               </NavLink>
               <NavLink to="/rooms" className="nav-item">
                 Комнаты
+              </NavLink>
+              <NavLink to="/data-check" className="nav-item">
+                Справочник
               </NavLink>
               <div className="profile-menu">
                 <button
@@ -93,7 +93,7 @@ function App() {
           <section className="surface-card loading-state">Загрузка приложения...</section>
         ) : (
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<Navigate to={user ? '/characters' : '/login'} replace />} />
             <Route path="/characters" element={<CharactersPage />} />
             <Route path="/characters/new" element={<Navigate to="/characters/new/identity" replace />} />
             <Route path="/characters/new/:step" element={<CharacterCreatePage />} />
@@ -101,12 +101,13 @@ function App() {
             <Route path="/characters/:id/edit/:step" element={<CharacterCreatePage />} />
             <Route path="/characters/:id" element={<CharacterDetailPage />} />
             <Route path="/rooms" element={<RoomsPage />} />
+            <Route path="/data-check" element={<DataCheckPage />} />
             <Route path="/rooms/invite/:inviteToken" element={<RoomInvitePage />} />
             <Route path="/rooms/:id" element={<RoomDetailPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="*" element={<Navigate to={user ? '/profile' : '/'} replace />} />
+            <Route path="*" element={<Navigate to={user ? '/characters' : '/login'} replace />} />
           </Routes>
         )}
       </main>

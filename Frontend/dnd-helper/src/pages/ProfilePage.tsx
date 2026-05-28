@@ -1,48 +1,37 @@
-import { useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../components/AuthProvider'
-import { CharacterCard } from '../components/CharacterCard'
-import { getMyCharacters } from '../services/charactersApi'
-import type { CharacterSummary } from '../types/character'
+import { deleteAccount } from '../services/charactersApi'
+import type { ApiValidationError } from '../types/character'
 
 export function ProfilePage() {
   const { user, isLoading, logout } = useAuth()
-  const [characters, setCharacters] = useState<CharacterSummary[]>([])
-  const [isCharactersLoading, setIsCharactersLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const [isDeletePanelOpen, setIsDeletePanelOpen] = useState(false)
+  const [deletePhrase, setDeletePhrase] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteStatus, setDeleteStatus] = useState<string | null>(null)
 
-  useEffect(() => {
-    let isCancelled = false
-
-    async function loadCharacters() {
-      if (!user) {
-        setIsCharactersLoading(false)
-        return
-      }
-
-      try {
-        const response = await getMyCharacters()
-        if (!isCancelled) {
-          setCharacters(response)
-          setError(null)
-        }
-      } catch {
-        if (!isCancelled) {
-          setError('Не удалось загрузить персонажей из личного кабинета.')
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsCharactersLoading(false)
-        }
-      }
+  async function handleDeleteAccount() {
+    if (deletePhrase.trim().toUpperCase() !== 'УДАЛИТЬ') {
+      setDeleteStatus('Для удаления аккаунта введи слово «УДАЛИТЬ».')
+      return
     }
 
-    void loadCharacters()
+    setIsDeleting(true)
+    setDeleteStatus(null)
 
-    return () => {
-      isCancelled = true
+    try {
+      await deleteAccount()
+      await logout()
+      navigate('/register', { replace: true })
+    } catch (error) {
+      const apiError = error as ApiValidationError
+      setDeleteStatus(apiError.message || 'Не удалось удалить аккаунт.')
+    } finally {
+      setIsDeleting(false)
     }
-  }, [user])
+  }
 
   if (!isLoading && !user) {
     return <Navigate to="/login" replace state={{ from: '/profile' }} />
@@ -54,10 +43,9 @@ export function ProfilePage() {
 
   return (
     <div className="stack">
-      <section className="surface-card profile-hero">
-        <div>
-          <h2>{user.displayName}</h2>
-          <p className="section-text">{user.email}</p>
+      <section className="surface-card profile-panel">
+        <div className="profile-panel__header">
+          <h2>Личный кабинет</h2>
           <div className="badge-cluster">
             {user.roles.map((role) => (
               <span key={role} className="pill">
@@ -66,10 +54,30 @@ export function ProfilePage() {
             ))}
           </div>
         </div>
-
+        <div className="profile-panel__grid">
+          <article className="surface-card profile-fact-card">
+            <span>Имя пользователя</span>
+            <strong>{user.displayName}</strong>
+          </article>
+          <article className="surface-card profile-fact-card">
+            <span>Почта</span>
+            <strong>{user.email}</strong>
+          </article>
+          <article className="surface-card profile-fact-card">
+            <span>ID аккаунта</span>
+            <strong>{user.id}</strong>
+          </article>
+          <article className="surface-card profile-fact-card">
+            <span>Роли</span>
+            <strong>{user.roles.map((role) => (role === 'GameMaster' ? 'Гейм-мастер' : 'Пользователь')).join(', ')}</strong>
+          </article>
+        </div>
         <div className="action-row">
-          <Link to="/characters/new/identity" className="primary-button">
-            Создать персонажа
+          <Link to="/characters" className="secondary-button">
+            Мои персонажи
+          </Link>
+          <Link to="/rooms" className="secondary-button">
+            Мои комнаты
           </Link>
           <button type="button" className="secondary-button button-reset" onClick={() => void logout()}>
             Выйти
@@ -77,34 +85,42 @@ export function ProfilePage() {
         </div>
       </section>
 
-      <section className="surface-card">
+      <section className="surface-card profile-danger-zone">
         <div className="section-header-row">
           <div>
-            <h2>Мои персонажи</h2>
+            <h3>Опасная зона</h3>
+            <p className="muted">Удаление аккаунта необратимо. Будут удалены связанные персонажи, комнаты и участия.</p>
           </div>
-          <Link to="/rooms" className="text-link">
-            Мои комнаты
-          </Link>
+          <button
+            type="button"
+            className="secondary-button button-reset danger-button"
+            onClick={() => setIsDeletePanelOpen((current) => !current)}
+          >
+            Удалить аккаунт
+          </button>
         </div>
 
-        {isCharactersLoading ? <p className="loading-state">Загрузка персонажей...</p> : null}
-        {error ? <p className="error-state">{error}</p> : null}
-
-        {!isCharactersLoading && !error ? (
-          characters.length > 0 ? (
-            <div className="grid two-columns">
-              {characters.map((character) => (
-                <CharacterCard key={character.id} character={character} />
-              ))}
-            </div>
-          ) : (
-            <div className="empty-state">
-              <p>Пока у тебя нет собственных персонажей.</p>
-              <Link to="/characters/new/identity" className="primary-button">
-                Создать первого персонажа
-              </Link>
-            </div>
-          )
+        {isDeletePanelOpen ? (
+          <div className="stack">
+            <label>
+              Для подтверждения введи «УДАЛИТЬ»
+              <input
+                className="app-search-input"
+                value={deletePhrase}
+                onChange={(event) => setDeletePhrase(event.target.value)}
+                placeholder="УДАЛИТЬ"
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-button button-reset danger-button danger-button--confirm"
+              onClick={() => void handleDeleteAccount()}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Удаление...' : 'Подтвердить удаление аккаунта'}
+            </button>
+            {deleteStatus ? <p className="inline-error">{deleteStatus}</p> : null}
+          </div>
         ) : null}
       </section>
     </div>
