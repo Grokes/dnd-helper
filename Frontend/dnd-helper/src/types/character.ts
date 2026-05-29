@@ -30,6 +30,10 @@ export type CharacterSummary = {
   armorClass: number
   weaponDamage?: string | null
   hitPoints: number
+  maxHitPoints: number
+  currentHitPoints: number
+  spentHitDice: number
+  availableHitDice: number
   passivePerception: number
   skills: SkillLevel[]
 }
@@ -52,6 +56,7 @@ export type Character = CharacterSummary & {
   abilities: AbilityScore[]
   savingThrows: SavingThrowBonus[]
   spellSlots: Array<{ spellLevel: number; slots: number }>
+  maxSpellSlots: Array<{ spellLevel: number; slots: number }>
   knownSpells: string[]
   preparedSpells: string[]
   activeEffects: string[]
@@ -81,6 +86,44 @@ export type CharacterPayload = {
   classSkillSelections: string[]
   spells: string[]
   inventory: string[]
+}
+
+export type CharacterRestPayload = {
+  restType: 'short' | 'long' | 'full-heal'
+  hitDiceToSpend?: number
+}
+
+export type CharacterRestResult = {
+  restType: string
+  previousCurrentHitPoints: number
+  currentHitPoints: number
+  maxHitPoints: number
+  healed: number
+  spentHitDice: number
+  availableHitDice: number
+  spellSlots: Array<{ spellLevel: number; slots: number }>
+  maxSpellSlots: Array<{ spellLevel: number; slots: number }>
+  details: string
+}
+
+export type CharacterCastSpellPayload = {
+  spellSlug: string
+  slotLevel?: number
+}
+
+export type CharacterCastSpellResult = {
+  spellSlug: string
+  spellName: string
+  spellLevel: number
+  slotLevel?: number | null
+  consumedSlot: boolean
+  spellSlots: Array<{ spellLevel: number; slots: number }>
+  maxSpellSlots: Array<{ spellLevel: number; slots: number }>
+  damageDice?: string | null
+  damageType?: string | null
+  damageRoll?: number | null
+  damageTotal?: number | null
+  message: string
 }
 
 export type AbilityBonus = {
@@ -194,6 +237,8 @@ export type RuleSpellItem = {
   minCharacterLevel?: number
   summary?: string
   description?: string
+  damageDice?: string
+  damageType?: string
 }
 
 export type RuleConditionItem = {
@@ -252,6 +297,9 @@ export type RoomMemberCharacter = {
   race: string
   className: string
   level: number
+  armorClass: number
+  maxHitPoints: number
+  currentHitPoints: number
 }
 
 export type RoomMember = {
@@ -313,4 +361,32 @@ export type MonsterDamageRoll = {
   damageBonus: number
   totalDamage: number
   rolledAtUtc: string
+}
+
+export type RoomMonsterDamageResult = {
+  monsterId: string
+  monsterName: string
+  removed: boolean
+  monster?: RoomMonster | null
+}
+
+export type MonsterAttackResult = {
+  monsterId: string
+  monsterName: string
+  targetCharacterId: string
+  targetCharacterName: string
+  attackRoll: number
+  attackBonus: number
+  attackTotal: number
+  targetArmorClass: number
+  isCriticalHit: boolean
+  isHit: boolean
+  damageExpression: string
+  damageDiceResult: number
+  damageBonus: number
+  damageTotal: number
+  targetCurrentHitPoints: number
+  targetMaxHitPoints: number
+  rolledAtUtc: string
+  message: string
 }

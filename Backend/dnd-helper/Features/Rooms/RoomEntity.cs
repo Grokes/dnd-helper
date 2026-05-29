@@ -66,7 +66,12 @@ public sealed class RoomEntity
                             characterLink.Character.Name,
                             characterLink.Character.Race,
                             characterLink.Character.ClassName,
-                            characterLink.Character.Level))
+                            characterLink.Character.Level,
+                            characterLink.Character.ArmorClass,
+                            characterLink.Character.MaxHitPoints <= 0 ? characterLink.Character.HitPoints : characterLink.Character.MaxHitPoints,
+                            characterLink.Character.CurrentHitPoints <= 0
+                                ? (characterLink.Character.MaxHitPoints <= 0 ? characterLink.Character.HitPoints : characterLink.Character.MaxHitPoints)
+                                : characterLink.Character.CurrentHitPoints))
                         .ToList(),
                     DeserializeInventory(member.InventoryJson)))
                 .ToList());

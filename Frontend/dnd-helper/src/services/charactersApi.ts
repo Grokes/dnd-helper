@@ -2,8 +2,12 @@ import type {
   ApiValidationError,
   AuthUser,
   Character,
+  CharacterCastSpellPayload,
+  CharacterCastSpellResult,
   CharacterOptions,
   CharacterPayload,
+  CharacterRestPayload,
+  CharacterRestResult,
   CharacterSummary,
   CreateRoomPayload,
   EquipmentCatalogItem,
@@ -12,6 +16,7 @@ import type {
   LoginPayload,
   Room,
   RoomMonster,
+  RoomMonsterDamageResult,
   RoomSummary,
   RuleConditionItem,
   RuleSpellItem,
@@ -20,6 +25,7 @@ import type {
   MonsterCatalogItem,
   UpdateRoomMemberRolePayload,
   MonsterDamageRoll,
+  MonsterAttackResult,
 } from '../types/character'
 
 async function parseApiError(response: Response): Promise<ApiValidationError> {
@@ -80,6 +86,20 @@ export function createCharacter(payload: CharacterPayload) {
 export function updateCharacter(id: string, payload: CharacterPayload) {
   return apiRequest<Character>(`/api/characters/${id}`, {
     method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function restCharacter(id: string, payload: CharacterRestPayload) {
+  return apiRequest<CharacterRestResult>(`/api/characters/${id}/rest`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function castCharacterSpell(id: string, payload: CharacterCastSpellPayload) {
+  return apiRequest<CharacterCastSpellResult>(`/api/characters/${id}/cast-spell`, {
+    method: 'POST',
     body: JSON.stringify(payload),
   })
 }
@@ -195,7 +215,7 @@ export function addRoomMonster(id: string, monsterSlug: string) {
 }
 
 export function applyRoomMonsterDamage(id: string, monsterId: string, damage: number) {
-  return apiRequest<RoomMonster>(`/api/rooms/${id}/monsters/${monsterId}/damage`, {
+  return apiRequest<RoomMonsterDamageResult>(`/api/rooms/${id}/monsters/${monsterId}/damage`, {
     method: 'POST',
     body: JSON.stringify({ damage }),
   })
@@ -204,5 +224,18 @@ export function applyRoomMonsterDamage(id: string, monsterId: string, damage: nu
 export function rollRoomMonsterDamage(id: string, monsterId: string) {
   return apiRequest<MonsterDamageRoll>(`/api/rooms/${id}/monsters/${monsterId}/roll-damage`, {
     method: 'POST',
+  })
+}
+
+export function removeRoomMonster(id: string, monsterId: string) {
+  return apiRequest<void>(`/api/rooms/${id}/monsters/${monsterId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function attackRoomCharacterByMonster(id: string, monsterId: string, targetCharacterId: string) {
+  return apiRequest<MonsterAttackResult>(`/api/rooms/${id}/monsters/${monsterId}/attack`, {
+    method: 'POST',
+    body: JSON.stringify({ targetCharacterId }),
   })
 }

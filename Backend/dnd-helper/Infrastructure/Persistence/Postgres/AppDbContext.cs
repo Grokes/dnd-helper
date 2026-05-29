@@ -36,12 +36,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.Property(item => item.Background).HasMaxLength(120);
             entity.Property(item => item.Alignment).HasMaxLength(80);
             entity.Property(item => item.WeaponDamage).HasMaxLength(80).HasColumnName("weapon_damage");
+            entity.Property(item => item.MaxHitPoints).HasColumnName("max_hit_points");
+            entity.Property(item => item.CurrentHitPoints).HasColumnName("current_hit_points");
+            entity.Property(item => item.SpentHitDice).HasColumnName("spent_hit_dice");
             entity.Property(item => item.AbilitiesJson).HasColumnName("abilities_json");
             entity.Property(item => item.BaseAbilitiesJson).HasColumnName("base_abilities_json");
             entity.Property(item => item.BonusAbilitySelectionsJson).HasColumnName("selected_options_json");
             entity.Property(item => item.SkillsJson).HasColumnName("skills_json");
             entity.Property(item => item.KnownSpellsJson).HasColumnName("known_spells_json");
             entity.Property(item => item.SpellSlotsJson).HasColumnName("spell_slots_json");
+            entity.Property(item => item.SpentSpellSlotsJson).HasColumnName("spent_spell_slots_json");
             entity.Property(item => item.PreparedSpellsJson).HasColumnName("prepared_spells_json");
             entity.Property(item => item.InventoryJson).HasColumnName("inventory_json");
             entity.Property(item => item.ActiveEffectsJson).HasColumnName("active_effects_json");

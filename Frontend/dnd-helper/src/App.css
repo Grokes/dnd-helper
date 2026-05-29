@@ -463,6 +463,10 @@
   line-height: 1.45;
 }
 
+.catalog-surface-themed {
+  background: linear-gradient(180deg, rgba(18, 27, 40, 0.92), rgba(12, 20, 31, 0.9));
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -559,10 +563,8 @@
 
 .room-monster-add {
   margin-top: 8px;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .room-monster-grid {
@@ -585,6 +587,89 @@
 .room-monster-actions {
   display: grid;
   gap: 8px;
+}
+
+.room-monster-picker-modal {
+  width: min(980px, 100%);
+}
+
+.room-monster-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.room-monster-picker-card {
+  text-align: left;
+  border: 1px solid rgba(130, 156, 212, 0.25);
+  border-radius: 14px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(26, 35, 50, 0.86), rgba(17, 24, 36, 0.86));
+  color: var(--text);
+  display: grid;
+  gap: 8px;
+  transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.room-monster-picker-card:hover {
+  border-color: rgba(116, 152, 232, 0.58);
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, rgba(30, 41, 61, 0.9), rgba(19, 27, 40, 0.9));
+  box-shadow: 0 12px 30px rgba(46, 67, 113, 0.3);
+}
+
+.room-toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: min(460px, calc(100vw - 28px));
+  z-index: 42;
+  display: grid;
+  gap: 8px;
+}
+
+.room-toast {
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(10, 14, 21, 0.96);
+  color: var(--text);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+}
+
+.room-toast--success {
+  border-color: rgba(90, 198, 139, 0.38);
+}
+
+.room-toast--error {
+  border-color: rgba(226, 99, 112, 0.46);
+}
+
+.character-toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 168px;
+  width: min(460px, calc(100vw - 28px));
+  z-index: 41;
+  display: grid;
+  gap: 8px;
+}
+
+.character-toast {
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(10, 14, 21, 0.96);
+  color: var(--text);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+}
+
+.character-toast--success {
+  border-color: rgba(90, 198, 139, 0.38);
+}
+
+.character-toast--error {
+  border-color: rgba(226, 99, 112, 0.46);
 }
 
 .presence-pill {
@@ -1011,6 +1096,7 @@
 .form-grid input,
 .form-grid select,
 .form-grid textarea,
+.app-select,
 .ability-builder-card select,
 .ability-builder-card input {
   width: 100%;
@@ -1055,6 +1141,9 @@
   background-size: 6px 6px, 6px 6px, 100% 100%;
   background-repeat: no-repeat;
   padding-right: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: var(--text);
 }
 
 .app-select option,
@@ -1596,6 +1685,7 @@
   .profile-panel__grid,
   .room-character-grid,
   .room-monster-grid,
+  .room-monster-picker-grid,
   .detail-layout,
   .builder-layout,
   .builder-layout.compact,

@@ -7,9 +7,13 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.VITE_API_PROXY_TARGET ?? 'http://backend:8080',
+        target: process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:5026',
         changeOrigin: true,
       },
     },
   },
 })
+// frontend: http://localhost:5173
+// backend: http://localhost:5026
+// postgres: localhost:5432
+// mongo: localhost:27017

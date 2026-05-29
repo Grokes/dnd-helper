@@ -13,6 +13,7 @@ public sealed record SelectRoomCharacterRequest(Guid? CharacterId);
 public sealed record UpdateRoomMemberRoleRequest(string Role);
 public sealed record AddRoomMonsterRequest(string MonsterSlug);
 public sealed record ApplyMonsterDamageRequest(int Damage);
+public sealed record MonsterAttackRequest(Guid TargetCharacterId);
 
 public sealed record RoomSummaryDto(
     Guid Id,
@@ -25,7 +26,15 @@ public sealed record RoomSummaryDto(
     string CurrentUserRole,
     bool IsOwner);
 
-public sealed record RoomMemberCharacterDto(Guid Id, string Name, string Race, string ClassName, int Level);
+public sealed record RoomMemberCharacterDto(
+    Guid Id,
+    string Name,
+    string Race,
+    string ClassName,
+    int Level,
+    int ArmorClass,
+    int MaxHitPoints,
+    int CurrentHitPoints);
 
 public sealed record RoomMemberDto(
     string UserId,
@@ -71,3 +80,29 @@ public sealed record MonsterDamageRollDto(
     int DamageBonus,
     int TotalDamage,
     DateTime RolledAtUtc);
+
+public sealed record RoomMonsterDamageResultDto(
+    Guid MonsterId,
+    string MonsterName,
+    bool Removed,
+    RoomMonsterDto? Monster);
+
+public sealed record MonsterAttackResultDto(
+    Guid MonsterId,
+    string MonsterName,
+    Guid TargetCharacterId,
+    string TargetCharacterName,
+    int AttackRoll,
+    int AttackBonus,
+    int AttackTotal,
+    int TargetArmorClass,
+    bool IsCriticalHit,
+    bool IsHit,
+    string DamageExpression,
+    int DamageDiceResult,
+    int DamageBonus,
+    int DamageTotal,
+    int TargetCurrentHitPoints,
+    int TargetMaxHitPoints,
+    DateTime RolledAtUtc,
+    string Message);

@@ -22,6 +22,7 @@ services:
   backend:
     build:
       context: ./Backend/dnd-helper
+      network: host
     container_name: dnd-backend
     environment:
       ASPNETCORE_ENVIRONMENT: Development
@@ -37,9 +38,11 @@ services:
   frontend:
     build:
       context: ./Frontend/dnd-helper
+      network: host
     container_name: dnd-frontend
-    ports:
-      - "5173:5173"
+    network_mode: host
+    environment:
+      VITE_API_PROXY_TARGET: http://127.0.0.1:5026
     depends_on:
       - backend
 

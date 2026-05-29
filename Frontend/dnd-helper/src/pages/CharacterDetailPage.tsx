@@ -1,8 +1,8 @@
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../components/AuthProvider'
-import { getCharacterById, getCharacterOptions, getEquipmentCatalog, getRulesSpells, updateCharacter } from '../services/charactersApi'
-import type { Character, ClassOption, EquipmentCatalogItem, RuleSpellItem } from '../types/character'
+import { castCharacterSpell, getCharacterById, getCharacterOptions, getEquipmentCatalog, getRulesSpells, restCharacter, updateCharacter } from '../services/charactersApi'
+import type { ApiValidationError, Character, ClassOption, EquipmentCatalogItem, RuleSpellItem } from '../types/character'
 import {
   availableSkills,
   getCharacterPortrait,
@@ -12,12 +12,15 @@ import {
 
 type EquippedSlots = { body: string | null; mainHand: string | null; offHand: string | null }
 type SpellModalState = {
+  slug?: string
   name: string
   circle: number
   minLevel: number
   classes: string[]
   summary?: string
   description?: string
+  damageDice?: string
+  damageType?: string
 }
 type RollEntry = {
   id: string
@@ -27,6 +30,11 @@ type RollEntry = {
   modifier: number
   total: number
   createdAt: string
+}
+type CharacterNotice = {
+  id: string
+  text: string
+  kind: 'success' | 'error'
 }
 
 const skillAbilityMap: Record<string, string> = {
@@ -153,13 +161,17 @@ export function CharacterDetailPage() {
   const [recentlyAddedInventoryKey, setRecentlyAddedInventoryKey] = useState<string | null>(null)
   const [recentlyAddedInventorySlug, setRecentlyAddedInventorySlug] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [shortRestHitDice, setShortRestHitDice] = useState(1)
+  const [spellCastSlotLevel, setSpellCastSlotLevel] = useState<number>(1)
   const [saveStatus, setSaveStatus] = useState<string | null>(null)
   const [rollHistory, setRollHistory] = useState<RollEntry[]>([])
+  const [notices, setNotices] = useState<CharacterNotice[]>([])
   const [lastRoll, setLastRoll] = useState<RollEntry | null>(null)
   const [isLastRollVisible, setIsLastRollVisible] = useState(false)
   const [isRollHistoryOpen, setIsRollHistoryOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const noticeTimeoutsRef = useRef<number[]>([])
 
   useEffect(() => {
     if (!user) {
@@ -225,6 +237,11 @@ export function CharacterDetailPage() {
       window.clearTimeout(timeoutId)
     }
   }, [lastRoll])
+
+  useEffect(() => () => {
+    noticeTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    noticeTimeoutsRef.current = []
+  }, [])
 
   if (!isAuthLoading && !user) {
     return <Navigate to="/login" replace state={{ from: `/characters/${id}` }} />
@@ -380,6 +397,16 @@ export function CharacterDetailPage() {
 
     setLastRoll(entry)
     setRollHistory((current) => [entry, ...current].slice(0, 20))
+  }
+
+  function pushNotice(text: string, kind: CharacterNotice['kind']) {
+    const id = crypto.randomUUID()
+    setNotices((current) => [{ id, text, kind }, ...current].slice(0, 4))
+    const timeoutId = window.setTimeout(() => {
+      setNotices((current) => current.filter((notice) => notice.id !== id))
+      noticeTimeoutsRef.current = noticeTimeoutsRef.current.filter((value) => value !== timeoutId)
+    }, 5200)
+    noticeTimeoutsRef.current.push(timeoutId)
   }
 
   function registerWeaponDamageRoll(slot: 'mainHand' | 'offHand') {
@@ -544,24 +571,30 @@ export function CharacterDetailPage() {
     const bySlug = spellBySlug.get(spellKey)
     if (bySlug) {
       return {
+        slug: bySlug.slug,
         name: bySlug.name,
         circle: bySlug.spellLevel ?? 0,
         minLevel: bySlug.minCharacterLevel ?? 1,
         classes: (bySlug.classSlugs ?? []).map(translateClassSlug),
         summary: bySlug.summary,
         description: bySlug.description,
+        damageDice: bySlug.damageDice,
+        damageType: bySlug.damageType,
       }
     }
 
     const byName = spellCatalog.find((spell) => spell.name.toLowerCase() === spellKey.toLowerCase())
     if (byName) {
       return {
+        slug: byName.slug,
         name: byName.name,
         circle: byName.spellLevel ?? 0,
         minLevel: byName.minCharacterLevel ?? 1,
         classes: (byName.classSlugs ?? []).map(translateClassSlug),
         summary: byName.summary,
         description: byName.description,
+        damageDice: byName.damageDice,
+        damageType: byName.damageType,
       }
     }
 
@@ -629,6 +662,78 @@ export function CharacterDetailPage() {
       setSaveStatus('Изменения сохранены.')
     } catch {
       setSaveStatus('Не удалось сохранить изменения.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function applyRest(restType: 'short' | 'long' | 'full-heal') {
+    if (!character || !canEditPage) {
+      return
+    }
+
+    if (restType === 'short' && shortRestHitDice < 0) {
+      setSaveStatus('Количество костей хитов не может быть отрицательным.')
+      return
+    }
+
+    setIsSaving(true)
+    setSaveStatus(null)
+    try {
+      const result = await restCharacter(character.id, {
+        restType,
+        hitDiceToSpend: restType === 'short' ? shortRestHitDice : undefined,
+      })
+
+      setCharacter((current) => (current ? {
+        ...current,
+        currentHitPoints: result.currentHitPoints,
+        maxHitPoints: result.maxHitPoints,
+        spentHitDice: result.spentHitDice,
+        availableHitDice: result.availableHitDice,
+        spellSlots: result.spellSlots,
+        maxSpellSlots: result.maxSpellSlots,
+      } : current))
+      setSaveStatus(result.details)
+    } catch {
+      setSaveStatus('Не удалось применить отдых.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function castSpellFromModal() {
+    if (!character || !canEditPage || !spellModal?.slug) {
+      return
+    }
+
+    setIsSaving(true)
+    setSaveStatus(null)
+    try {
+      const payload = spellModal.circle > 0
+        ? { spellSlug: spellModal.slug, slotLevel: Math.max(spellModal.circle, spellCastSlotLevel) }
+        : { spellSlug: spellModal.slug }
+      const result = await castCharacterSpell(character.id, payload)
+      setCharacter((current) => (current ? {
+        ...current,
+        spellSlots: result.spellSlots,
+        maxSpellSlots: result.maxSpellSlots,
+      } : current))
+
+      if (result.damageDice && result.damageTotal !== null && result.damageTotal !== undefined) {
+        pushNotice(
+          `${result.message} Урон: ${result.damageDice}${result.damageType ? ` (${translateDamageType(result.damageType)})` : ''} = ${result.damageTotal}.`,
+          'success',
+        )
+      } else {
+        pushNotice(result.message, 'success')
+      }
+    } catch (error) {
+      const apiError = error as ApiValidationError
+      const firstValidationMessage = apiError?.errors
+        ? Object.values(apiError.errors).flat().find((item) => item && item.trim().length > 0)
+        : null
+      pushNotice(firstValidationMessage ?? apiError?.message ?? 'Не удалось применить заклинание.', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -713,7 +818,7 @@ export function CharacterDetailPage() {
             </div>
             <div className="key-metric">
               <span>Хиты</span>
-              <strong>{character.hitPoints}</strong>
+              <strong>{character.currentHitPoints}/{character.maxHitPoints}</strong>
             </div>
             <div className="compact-stats__weapon">
               <span className="compact-stats__weapon-title">Боевой блок</span>
@@ -775,6 +880,40 @@ export function CharacterDetailPage() {
               <strong>{character.passivePerception}</strong>
             </div>
           </div>
+          {canEditPage ? (
+            <div className="stack">
+              <div className="section-header-row">
+                <h4>Отдых</h4>
+                <span className="muted">Костей хитов доступно: {character.availableHitDice}</span>
+              </div>
+              <div className="form-grid compact">
+                <label>
+                  Короткий отдых: потратить костей хитов
+                  <input
+                    className="app-search-input"
+                    type="number"
+                    min={0}
+                    max={Math.max(0, character.availableHitDice)}
+                    value={shortRestHitDice}
+                    onChange={(event) => setShortRestHitDice(Math.max(0, Number(event.target.value) || 0))}
+                    disabled={isSaving}
+                  />
+                </label>
+              </div>
+              <div className="skill-pick-grid">
+                <button type="button" className="secondary-button button-reset" onClick={() => void applyRest('short')} disabled={isSaving || character.availableHitDice <= 0}>
+                  Короткий отдых
+                </button>
+                <button type="button" className="secondary-button button-reset" onClick={() => void applyRest('long')} disabled={isSaving}>
+                  Длительный отдых
+                </button>
+                <button type="button" className="primary-button button-reset" onClick={() => void applyRest('full-heal')} disabled={isSaving}>
+                  Полностью вылечить
+                </button>
+              </div>
+            </div>
+          ) : null}
+          {saveStatus ? <p className={saveStatus.includes('Не удалось') ? 'inline-error' : 'success-text'}>{saveStatus}</p> : null}
         </article>
 
         <article className="surface-card">
@@ -815,12 +954,15 @@ export function CharacterDetailPage() {
         <article className="surface-card">
           <h3>Ячейки заклинаний</h3>
           <ul className="plain-list sheet-list">
-            {character.spellSlots.length > 0
-              ? character.spellSlots.map((slot) => (
+            {character.maxSpellSlots.length > 0
+              ? character.maxSpellSlots.map((slot) => {
+                  const current = character.spellSlots.find((item) => item.spellLevel === slot.spellLevel)?.slots ?? 0
+                  return (
                 <li key={slot.spellLevel}>
-                  <span className="sheet-list-static">Круг {slot.spellLevel}: {slot.slots}</span>
+                  <span className="sheet-list-static">Круг {slot.spellLevel}: {current}/{slot.slots}</span>
                 </li>
-              ))
+                  )
+                })
               : <li>Нет ячеек</li>}
           </ul>
         </article>
@@ -841,7 +983,11 @@ export function CharacterDetailPage() {
                   <button
                     type="button"
                     className="button-reset spell-chip-trigger"
-                    onClick={() => setSpellModal(resolveSpellDetails(spellKey))}
+                    onClick={() => {
+                      const details = resolveSpellDetails(spellKey)
+                      setSpellModal(details)
+                      setSpellCastSlotLevel(Math.max(1, details.circle))
+                    }}
                   >
                     {knownSpellsRu[index]}
                   </button>
@@ -962,7 +1108,6 @@ export function CharacterDetailPage() {
               </button>
             </div>
           ) : <p>{character.notes || 'Пока без заметок.'}</p>}
-          {saveStatus ? <p className={saveStatus.includes('Не удалось') ? 'inline-error' : 'success-text'}>{saveStatus}</p> : null}
         </article>
       </section>
 
@@ -993,6 +1138,14 @@ export function CharacterDetailPage() {
                 <span>Классы</span>
                 <strong>{spellModal.classes.length > 0 ? spellModal.classes.join(', ') : '—'}</strong>
               </div>
+              <div className="status-card">
+                <span>Боевой урон</span>
+                <strong>
+                  {spellModal.damageDice
+                    ? `${spellModal.damageDice}${spellModal.damageType ? ` (${translateDamageType(spellModal.damageType)})` : ''}`
+                    : 'Нет прямого урона'}
+                </strong>
+              </div>
             </div>
             {spellModal.summary ? (
               <article className="surface-card spell-description-block">
@@ -1004,6 +1157,36 @@ export function CharacterDetailPage() {
               <article className="surface-card spell-description-block">
                 <h4>Описание</h4>
                 <p>{spellModal.description}</p>
+              </article>
+            ) : null}
+            {canEditPage ? (
+              <article className="surface-card spell-description-block">
+                <h4>Использование заклинания</h4>
+                {spellModal.circle > 0 ? (
+                  <label>
+                    Ячейка круга
+                    <select
+                      className="app-select"
+                      value={spellCastSlotLevel}
+                      onChange={(event) => setSpellCastSlotLevel(Number(event.target.value))}
+                      disabled={isSaving}
+                    >
+                      {character.maxSpellSlots
+                        .filter((slot) => slot.spellLevel >= spellModal.circle)
+                        .map((slot) => {
+                          const current = character.spellSlots.find((item) => item.spellLevel === slot.spellLevel)?.slots ?? 0
+                          return (
+                            <option key={slot.spellLevel} value={slot.spellLevel} disabled={current <= 0}>
+                              {slot.spellLevel} круг ({current}/{slot.slots})
+                            </option>
+                          )
+                        })}
+                    </select>
+                  </label>
+                ) : <p className="muted">Заговор: ячейки не тратятся.</p>}
+                <button type="button" className="primary-button button-reset" onClick={() => void castSpellFromModal()} disabled={isSaving}>
+                  {isSaving ? 'Применение...' : 'Применить заклинание'}
+                </button>
               </article>
             ) : null}
           </div>
@@ -1039,14 +1222,21 @@ export function CharacterDetailPage() {
                     className="info-icon-button"
                     aria-label={spell.name}
                     onClick={() =>
-                      setSpellModal({
-                        name: spell.name,
-                        circle: spell.spellLevel ?? 0,
-                        minLevel: spell.minCharacterLevel ?? 1,
-                        classes: (spell.classSlugs ?? []).map(translateClassSlug),
-                        summary: spell.summary,
-                        description: spell.description,
-                      })
+                      {
+                        const details = {
+                          slug: spell.slug,
+                          name: spell.name,
+                          circle: spell.spellLevel ?? 0,
+                          minLevel: spell.minCharacterLevel ?? 1,
+                          classes: (spell.classSlugs ?? []).map(translateClassSlug),
+                          summary: spell.summary,
+                          description: spell.description,
+                          damageDice: spell.damageDice,
+                          damageType: spell.damageType,
+                        }
+                        setSpellModal(details)
+                        setSpellCastSlotLevel(Math.max(1, details.circle))
+                      }
                     }
                   >
                     i
@@ -1101,6 +1291,16 @@ export function CharacterDetailPage() {
             </div>
           </div>
         </div>
+      ) : null}
+
+      {notices.length > 0 ? (
+        <aside className="character-toast-stack">
+          {notices.map((notice) => (
+            <article key={notice.id} className={`character-toast character-toast--${notice.kind}`}>
+              {notice.text}
+            </article>
+          ))}
+        </aside>
       ) : null}
 
       {rollHistory.length > 0 ? (

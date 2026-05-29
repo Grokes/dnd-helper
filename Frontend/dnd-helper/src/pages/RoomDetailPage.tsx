@@ -3,17 +3,27 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { useAuth } from '../components/AuthProvider'
 import {
   addRoomMonster,
+  attackRoomCharacterByMonster,
   applyRoomMonsterDamage,
   getMonstersCatalog,
   getMyCharacters,
   getRoomById,
   getRoomMonsters,
+  removeRoomMonster,
   rollRoomMonsterDamage,
   selectRoomCharacter,
   updateRoomMemberRole,
 } from '../services/charactersApi'
 import type { ApiValidationError, CharacterSummary, MonsterCatalogItem, Room, RoomMonster } from '../types/character'
 import { getCharacterPortrait } from '../utils/characterPresentation'
+
+type RoomNoticeKind = 'success' | 'error' | 'info'
+
+type RoomNotice = {
+  id: number
+  kind: RoomNoticeKind
+  text: string
+}
 
 function getRoomRoleLabel(role: string) {
   return role === 'GameMaster' ? 'Ведущий' : 'Игрок'
@@ -39,10 +49,12 @@ export function RoomDetailPage() {
   const [characters, setCharacters] = useState<CharacterSummary[]>([])
   const [roomMonsters, setRoomMonsters] = useState<RoomMonster[]>([])
   const [monsterCatalog, setMonsterCatalog] = useState<MonsterCatalogItem[]>([])
-  const [selectedMonsterSlug, setSelectedMonsterSlug] = useState('')
+  const [isMonsterPickerOpen, setIsMonsterPickerOpen] = useState(false)
+  const [monsterSearch, setMonsterSearch] = useState('')
   const [monsterDamageInputs, setMonsterDamageInputs] = useState<Record<string, string>>({})
-  const [monsterRollLog, setMonsterRollLog] = useState<string | null>(null)
+  const [monsterTargets, setMonsterTargets] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
+  const [notifications, setNotifications] = useState<RoomNotice[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -66,7 +78,6 @@ export function RoomDetailPage() {
           setCharacters(charactersResponse)
           setRoomMonsters(monstersResponse)
           setMonsterCatalog(monsterCatalogResponse)
-          setSelectedMonsterSlug(monsterCatalogResponse[0]?.slug ?? '')
           setError(null)
         }
       } catch {
@@ -89,19 +100,30 @@ export function RoomDetailPage() {
     return <Navigate to="/login" replace state={{ from: `/rooms/${id}` }} />
   }
 
+  function pushNotice(text: string, kind: RoomNoticeKind = 'info') {
+    const id = Date.now() + Math.floor(Math.random() * 100_000)
+    setNotifications((current) => [...current, { id, kind, text }])
+    window.setTimeout(() => {
+      setNotifications((current) => current.filter((item) => item.id !== id))
+    }, 4800)
+  }
+
+  function getApiErrorMessage(caughtError: unknown, fallback: string) {
+    const apiError = caughtError as ApiValidationError
+    const firstFieldError = apiError.errors ? Object.values(apiError.errors).flat()[0] : null
+    return firstFieldError ?? apiError.message ?? fallback
+  }
+
   async function handleCharacterToggle(characterId: string, isSelected: boolean) {
     if (!room || !user) return
     setIsSaving(true)
-    setError(null)
     try {
       if (!isSelected) {
         const updated = await selectRoomCharacter(id, { characterId })
         setRoom(updated)
       }
     } catch (caughtError) {
-      const apiError = caughtError as ApiValidationError
-      const firstFieldError = apiError.errors ? Object.values(apiError.errors).flat()[0] : null
-      setError(firstFieldError ?? apiError.message ?? 'Не удалось обновить персонажей в комнате.')
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось обновить персонажей в комнате.'), 'error')
     } finally {
       setIsSaving(false)
     }
@@ -109,14 +131,11 @@ export function RoomDetailPage() {
 
   async function clearCharacterSelection() {
     setIsSaving(true)
-    setError(null)
     try {
       const updated = await selectRoomCharacter(id, { characterId: null })
       setRoom(updated)
     } catch (caughtError) {
-      const apiError = caughtError as ApiValidationError
-      const firstFieldError = apiError.errors ? Object.values(apiError.errors).flat()[0] : null
-      setError(firstFieldError ?? apiError.message ?? 'Не удалось очистить выбор персонажей.')
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось очистить выбор персонажей.'), 'error')
     } finally {
       setIsSaving(false)
     }
@@ -124,30 +143,27 @@ export function RoomDetailPage() {
 
   async function handleRoleChange(memberUserId: string, role: string) {
     setIsSaving(true)
-    setError(null)
     try {
       const updatedRoom = await updateRoomMemberRole(id, memberUserId, { role })
       setRoom(updatedRoom)
     } catch (caughtError) {
-      const apiError = caughtError as ApiValidationError
-      const firstFieldError = apiError.errors ? Object.values(apiError.errors).flat()[0] : null
-      setError(firstFieldError ?? apiError.message ?? 'Не удалось обновить роль участника.')
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось обновить роль участника.'), 'error')
     } finally {
       setIsSaving(false)
     }
   }
 
-  async function handleAddMonster() {
-    if (!room || !selectedMonsterSlug) return
+  async function handleAddMonster(monsterSlug: string) {
+    if (!room || !monsterSlug) return
     setIsSaving(true)
-    setError(null)
     try {
-      const addedMonster = await addRoomMonster(room.id, selectedMonsterSlug)
+      const addedMonster = await addRoomMonster(room.id, monsterSlug)
       setRoomMonsters((current) => [...current, addedMonster])
+      pushNotice(`Добавлено чудовище: ${addedMonster.name}.`, 'success')
+      setIsMonsterPickerOpen(false)
+      setMonsterSearch('')
     } catch (caughtError) {
-      const apiError = caughtError as ApiValidationError
-      const firstFieldError = apiError.errors ? Object.values(apiError.errors).flat()[0] : null
-      setError(firstFieldError ?? apiError.message ?? 'Не удалось добавить чудовище.')
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось добавить чудовище.'), 'error')
     } finally {
       setIsSaving(false)
     }
@@ -157,22 +173,32 @@ export function RoomDetailPage() {
     const raw = monsterDamageInputs[monsterId] ?? ''
     const value = Number(raw)
     if (!Number.isFinite(value) || value <= 0) {
-      setError('Укажи корректное количество полученного урона (больше 0).')
+      pushNotice('Укажи корректное количество полученного урона (больше 0).', 'error')
       return
     }
 
     setIsSaving(true)
-    setError(null)
     try {
-      const updatedMonster = await applyRoomMonsterDamage(id, monsterId, value)
-      setRoomMonsters((current) =>
-        current.map((monster) => (monster.id === updatedMonster.id ? updatedMonster : monster)),
-      )
+      const result = await applyRoomMonsterDamage(id, monsterId, value)
+      if (result.removed) {
+        setRoomMonsters((current) => current.filter((monster) => monster.id !== result.monsterId))
+        setMonsterTargets((current) => {
+          const { [monsterId]: _, ...next } = current
+          return next
+        })
+        pushNotice(`${result.monsterName} получает ${value} урона и выбывает из комнаты.`, 'success')
+      } else if (result.monster) {
+        setRoomMonsters((current) =>
+          current.map((monster) => (monster.id === result.monster!.id ? result.monster! : monster)),
+        )
+        pushNotice(
+          `${result.monster.name} получает ${value} урона. ХП: ${result.monster.currentHitPoints}/${result.monster.maxHitPoints}.`,
+          'success',
+        )
+      }
       setMonsterDamageInputs((current) => ({ ...current, [monsterId]: '' }))
     } catch (caughtError) {
-      const apiError = caughtError as ApiValidationError
-      const firstFieldError = apiError.errors ? Object.values(apiError.errors).flat()[0] : null
-      setError(firstFieldError ?? apiError.message ?? 'Не удалось применить урон по чудовищу.')
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось применить урон по чудовищу.'), 'error')
     } finally {
       setIsSaving(false)
     }
@@ -180,15 +206,72 @@ export function RoomDetailPage() {
 
   async function handleRollMonsterDamage(monsterId: string) {
     setIsSaving(true)
-    setError(null)
     try {
       const roll = await rollRoomMonsterDamage(id, monsterId)
-      const modifierText = roll.damageBonus > 0 ? `+ ${roll.damageBonus}` : roll.damageBonus < 0 ? `- ${Math.abs(roll.damageBonus)}` : '+ 0'
-      setMonsterRollLog(`${roll.monsterName}: ${roll.damageExpression} ${roll.diceResult} ${modifierText} = ${roll.totalDamage}`)
+      pushNotice(`${roll.monsterName}: ${roll.damageExpression} + ${roll.damageBonus} = ${roll.totalDamage} урона.`, 'success')
     } catch (caughtError) {
-      const apiError = caughtError as ApiValidationError
-      const firstFieldError = apiError.errors ? Object.values(apiError.errors).flat()[0] : null
-      setError(firstFieldError ?? apiError.message ?? 'Не удалось выполнить бросок урона чудовища.')
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось выполнить бросок урона чудовища.'), 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleRemoveMonster(monsterId: string) {
+    setIsSaving(true)
+    try {
+      const target = roomMonsters.find((monster) => monster.id === monsterId)
+      await removeRoomMonster(id, monsterId)
+      setRoomMonsters((current) => current.filter((monster) => monster.id !== monsterId))
+      setMonsterTargets((current) => {
+        const { [monsterId]: _, ...next } = current
+        return next
+      })
+      pushNotice(`Чудовище ${target?.name ?? ''} удалено из комнаты.`, 'success')
+    } catch (caughtError) {
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось удалить чудовище.'), 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleMonsterAttack(monsterId: string) {
+    const targetCharacterId = monsterTargets[monsterId]
+    if (!targetCharacterId) {
+      pushNotice('Выбери цель атаки для чудовища.', 'error')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      const result = await attackRoomCharacterByMonster(id, monsterId, targetCharacterId)
+      setRoom((current) => {
+        if (!current) {
+          return current
+        }
+
+        return {
+          ...current,
+          members: current.members.map((member) => ({
+            ...member,
+            characters: member.characters.map((character) =>
+              character.id === result.targetCharacterId
+                ? {
+                  ...character,
+                  currentHitPoints: result.targetCurrentHitPoints,
+                  maxHitPoints: result.targetMaxHitPoints,
+                }
+                : character),
+          })),
+        }
+      })
+
+      const attackLine = `Атака: d20(${result.attackRoll}) + ${result.attackBonus} = ${result.attackTotal} против КД ${result.targetArmorClass}.`
+      const damageLine = result.isHit
+        ? `Урон: ${result.damageExpression} + ${result.damageBonus} = ${result.damageTotal}.`
+        : 'Попадания нет, урон не проходит.'
+      pushNotice(`${result.message} ${attackLine} ${damageLine}`, result.isHit ? 'success' : 'info')
+    } catch (caughtError) {
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось выполнить атаку чудовищем.'), 'error')
     } finally {
       setIsSaving(false)
     }
@@ -196,6 +279,12 @@ export function RoomDetailPage() {
 
   const currentMember = room?.members.find((member) => member.userId === user?.id) ?? null
   const selectedCharacterIds = new Set(currentMember?.characters.map((item) => item.id) ?? [])
+  const filteredMonstersCatalog = monsterCatalog
+    .filter((monster) => `${monster.name} ${monster.creatureType ?? ''} ${monster.alignment ?? ''}`.toLowerCase().includes(monsterSearch.toLowerCase()))
+    .sort((left, right) => left.name.localeCompare(right.name, 'ru-RU'))
+  const roomCharacterTargets = room
+    ? room.members.flatMap((member) => member.characters).filter((character, index, list) => list.findIndex((item) => item.id === character.id) === index)
+    : []
 
   return (
     <div className="stack">
@@ -269,8 +358,15 @@ export function RoomDetailPage() {
                                 </div>
                                 <span className="pill">Ур. {character.level}</span>
                               </div>
-                              <p className="muted">Просмотр доступен только в режиме чтения.</p>
-                              <Link to={`/characters/${character.id}?view=room`} className="text-link">
+                              <p className="muted">
+                                {member.userId === user?.id
+                                  ? 'Твой персонаж: доступно редактирование.'
+                                  : 'Персонаж другого игрока: только просмотр.'}
+                              </p>
+                              <Link
+                                to={member.userId === user?.id ? `/characters/${character.id}` : `/characters/${character.id}?view=room`}
+                                className="text-link"
+                              >
                                 Открыть лист
                               </Link>
                             </div>
@@ -299,37 +395,21 @@ export function RoomDetailPage() {
             <div className="section-header-row">
               <div>
                 <h3>Чудовища комнаты</h3>
-                <p className="muted">Справочник чудовищ взят из PHB-сида проекта. Ведущий управляет уроном и бросками.</p>
               </div>
             </div>
 
             {room.canManageMembers ? (
               <div className="room-monster-add">
-                <label className="full-span">
+                <button
+                  type="button"
+                  className="primary-button button-reset"
+                  onClick={() => setIsMonsterPickerOpen(true)}
+                  disabled={isSaving || monsterCatalog.length === 0}
+                >
                   Добавить чудовище
-                  <select
-                    className="app-select"
-                    value={selectedMonsterSlug}
-                    onChange={(event) => setSelectedMonsterSlug(event.target.value)}
-                    disabled={isSaving || monsterCatalog.length === 0}
-                  >
-                    {monsterCatalog
-                      .slice()
-                      .sort((left, right) => left.name.localeCompare(right.name, 'ru-RU'))
-                      .map((monster) => (
-                        <option key={monster.slug} value={monster.slug}>
-                          {monster.name} • CR {monster.challengeRating ?? 0}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <button type="button" className="primary-button button-reset" onClick={() => void handleAddMonster()} disabled={isSaving || !selectedMonsterSlug}>
-                  Добавить в комнату
                 </button>
               </div>
             ) : null}
-
-            {monsterRollLog ? <p className="success-text">{monsterRollLog}</p> : null}
 
             <div className="room-monster-grid">
               {roomMonsters.length > 0 ? (
@@ -350,6 +430,25 @@ export function RoomDetailPage() {
                           Бросок урона
                         </button>
                         <label>
+                          Цель атаки
+                          <select
+                            className="app-select"
+                            value={monsterTargets[monster.id] ?? ''}
+                            onChange={(event) => setMonsterTargets((current) => ({ ...current, [monster.id]: event.target.value }))}
+                            disabled={isSaving || roomCharacterTargets.length === 0}
+                          >
+                            <option value="">Выбери персонажа</option>
+                            {roomCharacterTargets.map((target) => (
+                              <option key={target.id} value={target.id}>
+                                {target.name} • КД {target.armorClass} • ХП {target.currentHitPoints}/{target.maxHitPoints}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button type="button" className="secondary-button button-reset" onClick={() => void handleMonsterAttack(monster.id)} disabled={isSaving}>
+                          Атаковать персонажа
+                        </button>
+                        <label>
                           Полученный урон
                           <input
                             type="number"
@@ -363,6 +462,9 @@ export function RoomDetailPage() {
                         <button type="button" className="primary-button button-reset" onClick={() => void handleApplyMonsterDamage(monster.id)} disabled={isSaving}>
                           Применить урон
                         </button>
+                        <button type="button" className="secondary-button button-reset" onClick={() => void handleRemoveMonster(monster.id)} disabled={isSaving}>
+                          Удалить чудовище
+                        </button>
                       </div>
                     ) : (
                       <p className="muted">Только ведущий может управлять бросками и уроном чудовищ.</p>
@@ -375,6 +477,63 @@ export function RoomDetailPage() {
             </div>
           </section>
         </>
+      ) : null}
+
+      {isMonsterPickerOpen ? (
+        <div className="modal-overlay" role="presentation" onClick={() => setIsMonsterPickerOpen(false)}>
+          <div className="modal-card room-monster-picker-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Добавить чудовище в комнату</h3>
+                <p className="muted">Выбери существо из справочника PHB.</p>
+              </div>
+              <button type="button" className="info-icon-button button-reset" onClick={() => setIsMonsterPickerOpen(false)} aria-label="Закрыть окно">
+                ×
+              </button>
+            </div>
+            <input
+              className="app-search-input"
+              type="search"
+              value={monsterSearch}
+              onChange={(event) => setMonsterSearch(event.target.value)}
+              placeholder="Поиск по названию, типу или мировоззрению..."
+            />
+            <div className="room-monster-picker-grid">
+              {filteredMonstersCatalog.map((monster) => (
+                <button
+                  key={monster.slug}
+                  type="button"
+                  className="room-monster-picker-card button-reset"
+                  onClick={() => void handleAddMonster(monster.slug)}
+                  disabled={isSaving}
+                >
+                  <div className="section-header-row">
+                    <strong>{monster.name}</strong>
+                    <span className="pill">CR {monster.challengeRating ?? 0}</span>
+                  </div>
+                  <p className="muted">{monster.size} • {monster.creatureType} • {monster.alignment}</p>
+                  <p className="muted">КД {monster.armorClass} • ХП {monster.hitPoints}</p>
+                  <p className="muted">
+                    {monster.attackName}: +{monster.attackBonus} • {monster.damageDice}
+                    {(monster.damageBonus ?? 0) >= 0
+                      ? ` + ${monster.damageBonus ?? 0}`
+                      : ` - ${Math.abs(monster.damageBonus ?? 0)}`} ({translateDamageType(monster.damageType)})
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {notifications.length > 0 ? (
+        <aside className="room-toast-stack">
+          {notifications.map((notice) => (
+            <article key={notice.id} className={`room-toast room-toast--${notice.kind}`}>
+              {notice.text}
+            </article>
+          ))}
+        </aside>
       ) : null}
     </div>
   )

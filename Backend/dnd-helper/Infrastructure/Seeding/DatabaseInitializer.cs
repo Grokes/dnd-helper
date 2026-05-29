@@ -53,6 +53,22 @@ public sealed class DatabaseInitializer(
         {
             missingColumns.Add("characters.spell_slots_json");
         }
+        if (!await HasColumnAsync("characters", "max_hit_points", cancellationToken))
+        {
+            missingColumns.Add("characters.max_hit_points");
+        }
+        if (!await HasColumnAsync("characters", "current_hit_points", cancellationToken))
+        {
+            missingColumns.Add("characters.current_hit_points");
+        }
+        if (!await HasColumnAsync("characters", "spent_hit_dice", cancellationToken))
+        {
+            missingColumns.Add("characters.spent_hit_dice");
+        }
+        if (!await HasColumnAsync("characters", "spent_spell_slots_json", cancellationToken))
+        {
+            missingColumns.Add("characters.spent_spell_slots_json");
+        }
         if (!await HasTableAsync("room_membership_characters", cancellationToken))
         {
             missingColumns.Add("room_membership_characters");

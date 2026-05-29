@@ -535,8 +535,185 @@ public static class RoomEndpoints
             }
 
             combatant.CurrentHitPoints = Math.Max(0, combatant.CurrentHitPoints - request.Damage);
+            if (combatant.CurrentHitPoints <= 0)
+            {
+                var removedMonsterId = combatant.Id;
+                var removedMonsterName = combatant.Name;
+                dbContext.EncounterCombatants.Remove(combatant);
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return Results.Ok(new RoomMonsterDamageResultDto(
+                    removedMonsterId,
+                    removedMonsterName,
+                    true,
+                    null));
+            }
+
             await dbContext.SaveChangesAsync(cancellationToken);
-            return Results.Ok(MapMonsterDto(combatant));
+            return Results.Ok(new RoomMonsterDamageResultDto(
+                combatant.Id,
+                combatant.Name,
+                false,
+                MapMonsterDto(combatant)));
+        }).RequireAuthorization();
+
+        endpoints.MapDelete("/api/rooms/{id:guid}/monsters/{monsterId:guid}", async (
+            Guid id,
+            Guid monsterId,
+            ClaimsPrincipal principal,
+            UserManager<ApplicationUser> userManager,
+            AppDbContext dbContext,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var membership = await dbContext.RoomMemberships
+                .Include(member => member.Room)
+                .FirstOrDefaultAsync(member => member.RoomId == id && member.UserId == user.Id, cancellationToken);
+
+            if (membership?.Room is null)
+            {
+                return Results.Forbid();
+            }
+
+            if (membership.Role != RoomMemberRoles.GameMaster && membership.Room.OwnerUserId != user.Id)
+            {
+                return Results.Forbid();
+            }
+
+            var combatant = await dbContext.EncounterCombatants
+                .Include(existingCombatant => existingCombatant.Encounter)
+                .FirstOrDefaultAsync(existingCombatant =>
+                    existingCombatant.Id == monsterId &&
+                    existingCombatant.Encounter!.RoomId == id &&
+                    !existingCombatant.IsPlayerCharacter,
+                    cancellationToken);
+
+            if (combatant is null)
+            {
+                return Results.NotFound();
+            }
+
+            dbContext.EncounterCombatants.Remove(combatant);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return Results.NoContent();
+        }).RequireAuthorization();
+
+        endpoints.MapPost("/api/rooms/{id:guid}/monsters/{monsterId:guid}/attack", async (
+            Guid id,
+            Guid monsterId,
+            MonsterAttackRequest request,
+            ClaimsPrincipal principal,
+            UserManager<ApplicationUser> userManager,
+            AppDbContext dbContext,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var membership = await dbContext.RoomMemberships
+                .Include(member => member.Room)
+                .FirstOrDefaultAsync(member => member.RoomId == id && member.UserId == user.Id, cancellationToken);
+
+            if (membership?.Room is null)
+            {
+                return Results.Forbid();
+            }
+
+            if (membership.Role != RoomMemberRoles.GameMaster && membership.Room.OwnerUserId != user.Id)
+            {
+                return Results.Forbid();
+            }
+
+            var combatant = await dbContext.EncounterCombatants
+                .Include(existingCombatant => existingCombatant.Encounter)
+                .FirstOrDefaultAsync(existingCombatant =>
+                    existingCombatant.Id == monsterId &&
+                    existingCombatant.Encounter!.RoomId == id &&
+                    !existingCombatant.IsPlayerCharacter,
+                    cancellationToken);
+
+            if (combatant is null)
+            {
+                return Results.NotFound();
+            }
+
+            var targetLink = await dbContext.RoomMembershipCharacters
+                .Include(link => link.Character)
+                .FirstOrDefaultAsync(link =>
+                    link.RoomId == id &&
+                    link.CharacterId == request.TargetCharacterId,
+                    cancellationToken);
+
+            if (targetLink?.Character is null)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["targetCharacterId"] = ["Выбери персонажа, который участвует в комнате."]
+                });
+            }
+
+            var target = targetLink.Character;
+            var targetMaxHitPoints = target.MaxHitPoints <= 0 ? target.HitPoints : target.MaxHitPoints;
+            if (target.MaxHitPoints <= 0)
+            {
+                target.CurrentHitPoints = targetMaxHitPoints;
+            }
+
+            var attackRoll = Random.Shared.Next(1, 21);
+            var isCriticalHit = attackRoll == 20;
+            var isAutomaticMiss = attackRoll == 1;
+            var attackTotal = attackRoll + combatant.AttackBonus;
+            var isHit = isCriticalHit || (!isAutomaticMiss && attackTotal >= target.ArmorClass);
+
+            var damageExpression = "—";
+            var damageDiceResult = 0;
+            var damageTotal = 0;
+            var message = $"{combatant.Name} промахивается по {target.Name}.";
+
+            if (isHit)
+            {
+                if (!TryRollDamage(combatant.DamageDice ?? "1d4", out damageExpression, out damageDiceResult))
+                {
+                    return Results.ValidationProblem(new Dictionary<string, string[]>
+                    {
+                        ["damageDice"] = ["Невозможно бросить урон: некорректный формат кости урона."]
+                    });
+                }
+
+                damageTotal = Math.Max(0, damageDiceResult + combatant.DamageBonus);
+                target.CurrentHitPoints = Math.Max(0, target.CurrentHitPoints - damageTotal);
+                message = $"{combatant.Name} попадает по {target.Name} и наносит {damageTotal} урона.";
+            }
+
+            target.UpdatedAtUtc = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(new MonsterAttackResultDto(
+                combatant.Id,
+                combatant.Name,
+                target.Id,
+                target.Name,
+                attackRoll,
+                combatant.AttackBonus,
+                attackTotal,
+                target.ArmorClass,
+                isCriticalHit,
+                isHit,
+                damageExpression,
+                damageDiceResult,
+                combatant.DamageBonus,
+                damageTotal,
+                target.CurrentHitPoints,
+                targetMaxHitPoints,
+                DateTime.UtcNow,
+                message));
         }).RequireAuthorization();
 
         endpoints.MapPost("/api/rooms/{id:guid}/monsters/{monsterId:guid}/roll-damage", async (
@@ -645,16 +822,53 @@ public static class RoomEndpoints
         expression = sourceDice;
         result = 0;
 
-        var normalized = sourceDice.Trim().ToLowerInvariant();
-        var match = System.Text.RegularExpressions.Regex.Match(normalized, @"^(?<count>\d+)d(?<sides>\d+)$");
+        var normalized = sourceDice.Trim().ToLowerInvariant().Replace(" ", string.Empty);
+        var match = System.Text.RegularExpressions.Regex.Match(
+            normalized,
+            @"^(?:(?<count>\d+)d(?<sides>\d+)|(?<flat>\d+))(?:(?<sign>[+-])(?<bonus>\d+))?$");
         if (!match.Success)
+        {
+            return false;
+        }
+
+        var hasDice = match.Groups["count"].Success && match.Groups["sides"].Success;
+        var hasFlat = match.Groups["flat"].Success;
+        var modifier = 0;
+        if (match.Groups["bonus"].Success)
+        {
+            modifier = int.Parse(match.Groups["bonus"].Value);
+            if (match.Groups["sign"].Value == "-")
+            {
+                modifier *= -1;
+            }
+        }
+
+        if (hasFlat)
+        {
+            var flatValue = int.Parse(match.Groups["flat"].Value);
+            if (flatValue < 0 || flatValue > 10_000 || modifier is < -10_000 or > 10_000)
+            {
+                return false;
+            }
+
+            result = Math.Max(0, flatValue + modifier);
+            expression = modifier switch
+            {
+                > 0 => $"{flatValue} + {modifier}",
+                < 0 => $"{flatValue} - {Math.Abs(modifier)}",
+                _ => flatValue.ToString()
+            };
+            return true;
+        }
+
+        if (!hasDice)
         {
             return false;
         }
 
         var count = int.Parse(match.Groups["count"].Value);
         var sides = int.Parse(match.Groups["sides"].Value);
-        if (count <= 0 || sides <= 0 || count > 30 || sides > 1000)
+        if (count <= 0 || sides <= 0 || count > 30 || sides > 1000 || modifier is < -10_000 or > 10_000)
         {
             return false;
         }
@@ -665,8 +879,15 @@ public static class RoomEndpoints
             rolls.Add(Random.Shared.Next(1, sides + 1));
         }
 
-        result = rolls.Sum();
-        expression = count > 1 ? $"{count}d{sides} ({string.Join(" + ", rolls)})" : $"{count}d{sides}";
+        var sum = rolls.Sum();
+        result = Math.Max(0, sum + modifier);
+        var baseExpression = count > 1 ? $"{count}d{sides} ({string.Join(" + ", rolls)})" : $"{count}d{sides} ({rolls[0]})";
+        expression = modifier switch
+        {
+            > 0 => $"{baseExpression} + {modifier}",
+            < 0 => $"{baseExpression} - {Math.Abs(modifier)}",
+            _ => baseExpression
+        };
         return true;
     }
 }

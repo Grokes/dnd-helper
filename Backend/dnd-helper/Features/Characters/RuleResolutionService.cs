@@ -250,11 +250,25 @@ public sealed class RuleResolutionService
             trace.Add(new CalculationTraceEntryDto("armorClass", $"equipment:{bodyArmor.Slug}", "КД от экипированного доспеха", armorClass, "set"));
         }
 
-        if (equipped.TryGetValue("off", out var offSlug) && equipmentMap.TryGetValue(offSlug, out var offHand) && offHand.IsShield)
+        var shieldSlug = string.Empty;
+        if (equipped.TryGetValue("off", out var offSlug) &&
+            equipmentMap.TryGetValue(offSlug, out var offHand) &&
+            offHand.IsShield)
         {
-            var shieldBonus = offHand.ArmorClassBase ?? 2;
+            shieldSlug = offSlug;
+        }
+        else if (equipped.TryGetValue("main", out var mainShieldSlug) &&
+                 equipmentMap.TryGetValue(mainShieldSlug, out var mainHand) &&
+                 mainHand.IsShield)
+        {
+            shieldSlug = mainShieldSlug;
+        }
+
+        if (!string.IsNullOrWhiteSpace(shieldSlug) && equipmentMap.TryGetValue(shieldSlug, out var shieldItem))
+        {
+            var shieldBonus = shieldItem.ArmorClassBase ?? 2;
             armorClass += shieldBonus;
-            trace.Add(new CalculationTraceEntryDto("armorClass", $"equipment:{offHand.Slug}", "Бонус КД от щита", shieldBonus, "add"));
+            trace.Add(new CalculationTraceEntryDto("armorClass", $"equipment:{shieldItem.Slug}", "Бонус КД от щита", shieldBonus, "add"));
         }
 
         if (equipped.TryGetValue("main", out var mainSlug) && equipmentMap.TryGetValue(mainSlug, out var weapon) && !string.IsNullOrWhiteSpace(weapon.DamageDice))

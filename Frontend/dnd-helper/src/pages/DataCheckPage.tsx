@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getCharacterOptions, getEquipmentCatalog, getMonstersCatalog, getRulesConditions, getRulesSpells } from '../services/charactersApi'
 import type { CharacterOptions, EquipmentCatalogItem, MonsterCatalogItem, RuleConditionItem, RuleSpellItem } from '../types/character'
+import { translateAbility, translateSkill } from '../utils/characterPresentation'
 
 type CatalogTabKey = 'races' | 'classes' | 'backgrounds' | 'spells' | 'equipment' | 'monsters' | 'conditions'
 type CatalogDetailModal = {
@@ -55,8 +56,31 @@ function translateToken(value?: string) {
     gp: 'зм',
     sp: 'см',
     cp: 'мм',
+    Tiny: 'Крошечный',
+    Small: 'Маленький',
+    Large: 'Большой',
+    Huge: 'Огромный',
+    Gargantuan: 'Громадный',
   }
   return map[value] ?? value
+}
+
+function translateClassSlug(value?: string) {
+  const map: Record<string, string> = {
+    barbarian: 'Варвар',
+    bard: 'Бард',
+    cleric: 'Жрец',
+    druid: 'Друид',
+    fighter: 'Воин',
+    monk: 'Монах',
+    paladin: 'Паладин',
+    ranger: 'Следопыт',
+    rogue: 'Плут',
+    sorcerer: 'Чародей',
+    warlock: 'Колдун',
+    wizard: 'Волшебник',
+  }
+  return map[(value ?? '').toLowerCase()] ?? value ?? ''
 }
 
 export function DataCheckPage() {
@@ -131,7 +155,7 @@ export function DataCheckPage() {
         <div className="form-grid compact">
           <label className="full-span">
             Поиск по активной вкладке
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Например: рапира, дроу, маг..." />
+            <input className="app-search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Например: рапира, дроу, маг..." />
           </label>
         </div>
         <div className="catalog-tabs">
@@ -152,7 +176,7 @@ export function DataCheckPage() {
       {error ? <section className="surface-card error-state">{error}</section> : null}
 
       {!isLoading && !error ? (
-        <section className="surface-card">
+        <section className="surface-card catalog-surface-themed">
           {activeTab === 'races' ? (
             <div className="catalog-grid">
               {filtered.races.map((race) => (
@@ -170,7 +194,7 @@ export function DataCheckPage() {
                         blocks: [
                           { title: 'Описание', text: race.description ?? race.summary },
                           { title: 'Особенности', text: race.details.map((item) => `${item.title}: ${item.description}`).join('\n\n') || 'Нет данных' },
-                          { title: 'Владения', text: race.grantedSkillProficiencies.length > 0 ? race.grantedSkillProficiencies.join(', ') : 'Нет' },
+                          { title: 'Владения', text: race.grantedSkillProficiencies.length > 0 ? race.grantedSkillProficiencies.map((item) => translateSkill(item)).join(', ') : 'Нет' },
                         ],
                       })
                     }
@@ -197,7 +221,7 @@ export function DataCheckPage() {
                         title: item.name,
                         blocks: [
                           { title: 'Описание', text: item.description ?? item.summary },
-                          { title: 'Спасброски', text: item.savingThrowProficiencies.join(', ') || 'Нет данных' },
+                          { title: 'Спасброски', text: item.savingThrowProficiencies.map((entry) => translateAbility(entry)).join(', ') || 'Нет данных' },
                           { title: 'Классовые особенности', text: item.details.map((feature) => `${feature.title}: ${feature.description}`).join('\n\n') || 'Нет данных' },
                         ],
                       })
@@ -225,7 +249,7 @@ export function DataCheckPage() {
                         title: item.name,
                         blocks: [
                           { title: 'Описание', text: item.description ?? item.summary },
-                          { title: 'Навыки', text: item.grantedSkillProficiencies.join(', ') || 'Нет' },
+                          { title: 'Навыки', text: item.grantedSkillProficiencies.map((entry) => translateSkill(entry)).join(', ') || 'Нет' },
                           { title: 'Особенности', text: item.details.map((feature) => `${feature.title}: ${feature.description}`).join('\n\n') || 'Нет данных' },
                         ],
                       })
@@ -254,7 +278,7 @@ export function DataCheckPage() {
                         blocks: [
                           { title: 'Кратко', text: item.summary ?? 'Нет данных' },
                           { title: 'Описание', text: item.description ?? 'Нет данных' },
-                          { title: 'Классы', text: (item.classSlugs ?? []).join(', ') || 'Нет данных' },
+                          { title: 'Классы', text: (item.classSlugs ?? []).map((entry) => translateClassSlug(entry)).join(', ') || 'Нет данных' },
                         ],
                       })
                     }
@@ -305,7 +329,7 @@ export function DataCheckPage() {
               {filtered.monsters.map((item) => (
                 <article key={item.slug} className="catalog-card">
                   <h4>{item.name}</h4>
-                  <p className="catalog-card__meta">{item.size} {translateToken(item.creatureType)} • CR {item.challengeRating ?? 0}</p>
+                  <p className="catalog-card__meta">{translateToken(item.size)} {translateToken(item.creatureType)} • CR {item.challengeRating ?? 0}</p>
                   <p className="catalog-card__text">КД {item.armorClass ?? '-'} • ХП {item.hitPoints ?? '-'} • Скорость {item.speed ?? '-'}</p>
                   <button
                     type="button"

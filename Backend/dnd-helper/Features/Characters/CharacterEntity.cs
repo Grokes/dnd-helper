@@ -28,6 +28,9 @@ public sealed class CharacterEntity
     public int ArmorClass { get; set; }
     public string WeaponDamage { get; set; } = string.Empty;
     public int HitPoints { get; set; }
+    public int MaxHitPoints { get; set; }
+    public int CurrentHitPoints { get; set; }
+    public int SpentHitDice { get; set; }
     public int Speed { get; set; }
     public int ProficiencyBonus { get; set; }
     public int PassivePerception { get; set; }
@@ -38,6 +41,7 @@ public sealed class CharacterEntity
     public string SkillsJson { get; set; } = "[]";
     public string KnownSpellsJson { get; set; } = "[]";
     public string SpellSlotsJson { get; set; } = "[]";
+    public string SpentSpellSlotsJson { get; set; } = "{}";
     public string PreparedSpellsJson { get; set; } = "[]";
     public string InventoryJson { get; set; } = "[]";
     public string ActiveEffectsJson { get; set; } = "[]";
@@ -74,6 +78,12 @@ public sealed class CharacterEntity
         ArmorClass = computedCharacter.ArmorClass;
         WeaponDamage = computedCharacter.WeaponDamage ?? string.Empty;
         HitPoints = computedCharacter.HitPoints;
+        var hadHpState = MaxHitPoints > 0;
+        var previousCurrentHitPoints = CurrentHitPoints;
+        MaxHitPoints = computedCharacter.HitPoints;
+        CurrentHitPoints = hadHpState
+            ? Math.Clamp(previousCurrentHitPoints, 0, MaxHitPoints)
+            : MaxHitPoints;
         Speed = computedCharacter.Speed;
         ProficiencyBonus = computedCharacter.ProficiencyBonus;
         PassivePerception = computedCharacter.PassivePerception;
@@ -89,6 +99,10 @@ public sealed class CharacterEntity
         SkillsJson = JsonSerializer.Serialize(computedCharacter.Skills, JsonOptions);
         KnownSpellsJson = JsonSerializer.Serialize(computedCharacter.KnownSpells, JsonOptions);
         SpellSlotsJson = JsonSerializer.Serialize(computedCharacter.SpellSlots, JsonOptions);
+        if (string.IsNullOrWhiteSpace(SpentSpellSlotsJson))
+        {
+            SpentSpellSlotsJson = "{}";
+        }
         PreparedSpellsJson = JsonSerializer.Serialize(computedCharacter.PreparedSpells, JsonOptions);
         InventoryJson = JsonSerializer.Serialize(computedCharacter.Inventory, JsonOptions);
         ActiveEffectsJson = JsonSerializer.Serialize(computedCharacter.ActiveEffects, JsonOptions);
@@ -102,6 +116,16 @@ public sealed class CharacterEntity
         var abilities = Deserialize<AbilityScoreDto>(AbilitiesJson);
         var skills = Deserialize<SkillLevelDto>(SkillsJson);
         var selectedOptions = DeserializeSelectedOptions(BonusAbilitySelectionsJson);
+        var maxSpellSlots = Deserialize<SpellSlotDto>(SpellSlotsJson);
+        var spentSpellSlots = DeserializeSpentSpellSlots(SpentSpellSlotsJson);
+        var currentSpellSlots = maxSpellSlots
+            .Select(slot =>
+            {
+                var spent = spentSpellSlots.GetValueOrDefault(slot.SpellLevel);
+                var current = Math.Max(0, slot.Slots - Math.Max(0, spent));
+                return new SpellSlotDto(slot.SpellLevel, current);
+            })
+            .ToList();
         var characterClass = CharacterOptionsCatalog.Classes.FirstOrDefault(item => item.Id == ClassId);
         var race = CharacterOptionsCatalog.Races.FirstOrDefault(item => item.Id == RaceId);
         var background = CharacterOptionsCatalog.Backgrounds.FirstOrDefault(item => item.Id == BackgroundId);
@@ -118,6 +142,13 @@ public sealed class CharacterEntity
         var classSkillSelections = selectedOptions.ClassSkillSelections.Count > 0
             ? selectedOptions.ClassSkillSelections
             : splitSkillSelections.Item2;
+        var normalizedMaxHitPoints = MaxHitPoints > 0 ? MaxHitPoints : HitPoints;
+        var normalizedCurrentHitPoints = MaxHitPoints > 0
+            ? Math.Clamp(CurrentHitPoints, 0, normalizedMaxHitPoints)
+            : normalizedMaxHitPoints;
+        var totalHitDice = Math.Max(1, Level);
+        var normalizedSpentHitDice = Math.Clamp(SpentHitDice, 0, totalHitDice);
+        var availableHitDice = Math.Max(0, totalHitDice - normalizedSpentHitDice);
 
         return new CharacterDto(
             Id,
@@ -135,6 +166,10 @@ public sealed class CharacterEntity
             ArmorClass,
             string.IsNullOrWhiteSpace(WeaponDamage) ? null : WeaponDamage,
             HitPoints,
+            normalizedMaxHitPoints,
+            normalizedCurrentHitPoints,
+            normalizedSpentHitDice,
+            availableHitDice,
             Speed,
             ProficiencyBonus,
             PassivePerception,
@@ -147,7 +182,8 @@ public sealed class CharacterEntity
             abilities,
             savingThrows,
             skills,
-            Deserialize<SpellSlotDto>(SpellSlotsJson),
+            currentSpellSlots,
+            maxSpellSlots,
             Deserialize<string>(KnownSpellsJson),
             Deserialize<string>(PreparedSpellsJson),
             Deserialize<string>(InventoryJson),
@@ -159,6 +195,14 @@ public sealed class CharacterEntity
 
     public CharacterSummaryDto ToSummaryDto()
     {
+        var normalizedMaxHitPoints = MaxHitPoints > 0 ? MaxHitPoints : HitPoints;
+        var normalizedCurrentHitPoints = MaxHitPoints > 0
+            ? Math.Clamp(CurrentHitPoints, 0, normalizedMaxHitPoints)
+            : normalizedMaxHitPoints;
+        var totalHitDice = Math.Max(1, Level);
+        var normalizedSpentHitDice = Math.Clamp(SpentHitDice, 0, totalHitDice);
+        var availableHitDice = Math.Max(0, totalHitDice - normalizedSpentHitDice);
+
         return new CharacterSummaryDto(
             Id,
             Name,
@@ -169,6 +213,10 @@ public sealed class CharacterEntity
             ArmorClass,
             string.IsNullOrWhiteSpace(WeaponDamage) ? null : WeaponDamage,
             HitPoints,
+            normalizedMaxHitPoints,
+            normalizedCurrentHitPoints,
+            normalizedSpentHitDice,
+            availableHitDice,
             PassivePerception,
             Deserialize<SkillLevelDto>(SkillsJson));
     }
@@ -215,5 +263,22 @@ public sealed class CharacterEntity
         }
 
         return new SelectedOptionsState([], [], []);
+    }
+
+    private static Dictionary<int, int> DeserializeSpentSpellSlots(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return [];
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<int, int>>(source, JsonOptions) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
     }
 }

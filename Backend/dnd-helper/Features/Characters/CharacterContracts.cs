@@ -30,6 +30,40 @@ public sealed record UpdateCharacterRequest(
     List<string> Spells,
     List<string> Inventory);
 
+public sealed record CharacterRestRequest(
+    string RestType,
+    int? HitDiceToSpend);
+
+public sealed record CharacterRestResultDto(
+    string RestType,
+    int PreviousCurrentHitPoints,
+    int CurrentHitPoints,
+    int MaxHitPoints,
+    int Healed,
+    int SpentHitDice,
+    int AvailableHitDice,
+    IReadOnlyList<SpellSlotDto> SpellSlots,
+    IReadOnlyList<SpellSlotDto> MaxSpellSlots,
+    string Details);
+
+public sealed record CharacterCastSpellRequest(
+    string SpellSlug,
+    int? SlotLevel);
+
+public sealed record CharacterCastSpellResultDto(
+    string SpellSlug,
+    string SpellName,
+    int SpellLevel,
+    int? SlotLevel,
+    bool ConsumedSlot,
+    IReadOnlyList<SpellSlotDto> SpellSlots,
+    IReadOnlyList<SpellSlotDto> MaxSpellSlots,
+    string? DamageDice,
+    string? DamageType,
+    int? DamageRoll,
+    int? DamageTotal,
+    string Message);
+
 public sealed record BaseAbilityScoreDto(string Key, int Score);
 
 public sealed record SkillLevelDto(string SkillId, int Level);
@@ -52,6 +86,10 @@ public sealed record CharacterSummaryDto(
     int ArmorClass,
     string? WeaponDamage,
     int HitPoints,
+    int MaxHitPoints,
+    int CurrentHitPoints,
+    int SpentHitDice,
+    int AvailableHitDice,
     int PassivePerception,
     List<SkillLevelDto> Skills);
 
@@ -71,6 +109,10 @@ public sealed record CharacterDto(
     int ArmorClass,
     string? WeaponDamage,
     int HitPoints,
+    int MaxHitPoints,
+    int CurrentHitPoints,
+    int SpentHitDice,
+    int AvailableHitDice,
     int Speed,
     int ProficiencyBonus,
     int PassivePerception,
@@ -84,6 +126,7 @@ public sealed record CharacterDto(
     List<SavingThrowBonusDto> SavingThrows,
     List<SkillLevelDto> Skills,
     List<SpellSlotDto> SpellSlots,
+    List<SpellSlotDto> MaxSpellSlots,
     List<string> KnownSpells,
     List<string> PreparedSpells,
     List<string> Inventory,
