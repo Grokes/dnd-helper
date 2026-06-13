@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { useAuth } from '../components/AuthProvider'
-import { createRoom, getRooms, joinRoom } from '../services/charactersApi'
+import { useAuth } from '../features/auth/model/AuthProvider'
+import { createRoom, getRooms, joinRoom } from '../features/rooms/api/roomsApi'
 import type { ApiValidationError, RoomSummary } from '../types/character'
 
 function getRoomRoleLabel(role: string) {

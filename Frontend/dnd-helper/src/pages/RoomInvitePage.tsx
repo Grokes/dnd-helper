@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '../components/AuthProvider'
-import { joinRoomByInvite } from '../services/charactersApi'
+import { useAuth } from '../features/auth/model/AuthProvider'
+import { joinRoomByInvite } from '../features/rooms/api/roomsApi'
 import type { ApiValidationError } from '../types/character'
 
 export function RoomInvitePage() {

@@ -1,74 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
-import { useAuth } from '../components/AuthProvider'
+import { useAuth } from '../features/auth/model/AuthProvider'
 import {
   addRoomMonster,
   attackRoomCharacterByMonster,
   applyRoomMonsterDamage,
-  getMonstersCatalog,
-  getMyCharacters,
   getRoomById,
   getRoomMonsters,
   removeRoomMonster,
   rollRoomMonsterDamage,
   selectRoomCharacter,
   updateRoomMemberRole,
-} from '../services/charactersApi'
+} from '../features/rooms/api/roomsApi'
+import { getMyCharacters } from '../features/characters/api/charactersApi'
+import { getMonstersCatalog } from '../features/rules/api/rulesApi'
+import { getRoomRoleLabel, translateDamageType, translateMonsterMeta, type RoomNotice, type RoomNoticeKind } from '../features/rooms/model/roomModel'
 import type { ApiValidationError, CharacterSummary, MonsterCatalogItem, Room, RoomMonster } from '../types/character'
 import { getCharacterPortrait } from '../utils/characterPresentation'
-
-type RoomNoticeKind = 'success' | 'error' | 'info'
-
-type RoomNotice = {
-  id: number
-  kind: RoomNoticeKind
-  text: string
-}
-
-function getRoomRoleLabel(role: string) {
-  return role === 'GameMaster' ? 'Ведущий' : 'Игрок'
-}
-
-function translateDamageType(value?: string) {
-  const normalized = (value ?? '').trim().toLowerCase()
-  const map: Record<string, string> = {
-    slashing: 'рубящий',
-    piercing: 'колющий',
-    bludgeoning: 'дробящий',
-    fire: 'огненный',
-    cold: 'холод',
-    poison: 'яд',
-    acid: 'кислотный',
-  }
-  return map[normalized] ?? value ?? ''
-}
-
-function translateMonsterMeta(value?: string) {
-  const normalized = (value ?? '').trim().toLowerCase()
-  const map: Record<string, string> = {
-    tiny: 'Крошечный',
-    small: 'Маленький',
-    medium: 'Средний',
-    large: 'Большой',
-    huge: 'Огромный',
-    gargantuan: 'Громадный',
-    beast: 'Зверь',
-    humanoid: 'Гуманоид',
-    undead: 'Нежить',
-    monstrosity: 'Монстр',
-    giant: 'Великан',
-    dragon: 'Дракон',
-    ooze: 'Слизь',
-    elemental: 'Элементаль',
-    unaligned: 'Без мировоззрения',
-    neutral: 'Нейтральный',
-    'neutral good': 'Нейтрально-добрый',
-    'neutral evil': 'Нейтрально-злой',
-    'chaotic evil': 'Хаотично-злой',
-    'lawful evil': 'Законно-злой',
-  }
-  return map[normalized] ?? value ?? ''
-}
 
 export function RoomDetailPage() {
   const { id = '' } = useParams()

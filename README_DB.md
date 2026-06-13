@@ -1,63 +1,29 @@
-# D&D Helper: Database Architecture
+# DND Helper: базы данных
 
-## Зачем PostgreSQL
-- PostgreSQL хранит операционные данные приложения:
-- пользователи и роли (`ASP.NET Identity`)
-- комнаты и участники комнат
-- персонажи пользователей
-- `computed_snapshot` и `calculation_trace`
-- инвентарь, известные/подготовленные заклинания, активные эффекты
-- encounter и encounter_combatants
+Короткий вход в документацию по данным проекта.
 
-## Зачем MongoDB
-- MongoDB хранит справочную базу правил D&D:
-- `rulesets`, `races`, `classes`, `backgrounds`, `features`
-- `spells`, `equipment`, `monsters`, `conditions`
-- связи правил хранятся внутри документов (`grants`, `requires`, `choices`, `effects`, `modifiers`, `levels`, `source`)
+Подробное описание находится в [docs/data.md](docs/data.md).
 
-## Разделение данных
-- PostgreSQL: состояние пользователя и текущей игры.
-- MongoDB: правила и шаблоны игровых сущностей.
-- Создание персонажа читает правила из MongoDB и сохраняет результат в PostgreSQL.
+## Кратко
 
-## Где находятся seed-сервисы
-- [DatabaseInitializer.cs](/home/grokes/repos/VKR/Backend/dnd-helper/Infrastructure/Seeding/DatabaseInitializer.cs)
-- [ApplicationDatabaseSeeder.cs](/home/grokes/repos/VKR/Backend/dnd-helper/Infrastructure/Seeding/ApplicationDatabaseSeeder.cs)
-- [RulesDatabaseSeeder.cs](/home/grokes/repos/VKR/Backend/dnd-helper/Infrastructure/Seeding/RulesDatabaseSeeder.cs)
+- PostgreSQL хранит операционные данные приложения: пользователей, роли, персонажей, комнаты, участников, чудовищ в комнатах и текущее состояние игры.
+- MongoDB хранит справочник правил: rulesets, races, classes, backgrounds, features, spells, equipment, monsters, conditions.
+- PostgreSQL отвечает на вопрос: "что сейчас происходит у конкретного пользователя или в конкретной комнате?"
+- MongoDB отвечает на вопрос: "какие правила, шаблоны и справочные сущности существуют?"
 
-## Как работает idempotent seeding
-- При запуске `DatabaseInitializer`:
-- подготавливает PostgreSQL (`EnsureCreated`)
-- создаёт MongoDB indexes
-- делает upsert правил в MongoDB по `(rulesetId, slug)`
-- добавляет demo-данные в PostgreSQL только если их нет
-- Повторный запуск не создаёт дубликаты.
+## Seeding
 
-## Запуск через docker-compose
-1. В корне репозитория:
+При старте backend запускает `DatabaseInitializer`, который:
+- подготавливает PostgreSQL;
+- создаёт MongoDB indexes;
+- upsert'ит справочные данные MongoDB;
+- создаёт demo/test данные PostgreSQL только если они отсутствуют.
+
+## Пересоздание локальных БД
+
 ```bash
-docker compose up --build
-```
-2. Backend: `http://localhost:5026`
-3. Frontend: `http://localhost:5173`
-
-## Безопасное удаление и пересоздание БД
-1. Остановить контейнеры:
-```bash
-docker compose down
-```
-2. Удалить volumes:
-```bash
-docker volume rm vkr_pg_data vkr_mongo_data
-```
-3. Запустить снова:
-```bash
+docker compose down -v
 docker compose up --build
 ```
 
-После этого приложение заново создаст минимальные данные при старте.
-
-## Как добавить новые справочные данные
-1. Добавить документы в `RulesDatabaseSeeder` (race/class/feature/spell/etc.).
-2. Использовать стабильный `slug`.
-3. Перезапустить backend: сидер выполнит upsert без дублирования.
+Осторожно: команда удалит локальные volumes и все пользовательские данные в контейнерах.

@@ -1,49 +1,11 @@
 import { Link, Navigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { useAuth } from '../components/AuthProvider'
-import { CharacterCard } from '../components/CharacterCard'
-import { getMyCharacters } from '../services/charactersApi'
-import type { CharacterSummary } from '../types/character'
+import { useAuth } from '../features/auth/model/AuthProvider'
+import { CharacterCard } from '../entities/character/ui/CharacterCard'
+import { useMyCharacters } from '../features/characters/model/useMyCharacters'
 
 export function CharactersPage() {
   const { user, isLoading: isAuthLoading } = useAuth()
-  const [characters, setCharacters] = useState<CharacterSummary[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!user) {
-      setCharacters([])
-      setIsLoading(false)
-      return
-    }
-
-    let isCancelled = false
-
-    async function loadCharacters() {
-      try {
-        const response = await getMyCharacters()
-        if (!isCancelled) {
-          setCharacters(response)
-          setError(null)
-        }
-      } catch {
-        if (!isCancelled) {
-          setError('Не удалось загрузить список персонажей.')
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoading(false)
-        }
-      }
-    }
-
-    void loadCharacters()
-
-    return () => {
-      isCancelled = true
-    }
-  }, [user])
+  const { characters, isLoading, error } = useMyCharacters(user?.id)
 
   if (!isAuthLoading && !user) {
     return <Navigate to="/login" replace state={{ from: '/characters' }} />

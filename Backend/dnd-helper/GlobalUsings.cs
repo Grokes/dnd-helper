@@ -1,5 +1,7 @@
 global using dnd_helper.Application.Auth;
 global using dnd_helper.Application.Characters;
+global using dnd_helper.Application.Characters.UseCases;
+global using dnd_helper.Application.Common.UseCases;
 global using dnd_helper.Application.Common.Dice;
 global using dnd_helper.Application.ReferenceData;
 global using dnd_helper.Application.Rooms;

@@ -11,6 +11,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<CharacterCreationService>();
         services.AddScoped<CharacterRestService>();
         services.AddScoped<CharacterSpellService>();
+        services.AddScoped<CreateCharacterUseCase>();
+        services.AddScoped<UpdateCharacterUseCase>();
+        services.AddScoped<RestCharacterUseCase>();
+        services.AddScoped<CastCharacterSpellUseCase>();
         services.AddScoped<RoomAccessService>();
         services.AddScoped<RoomMonsterService>();
 

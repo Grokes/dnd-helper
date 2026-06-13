@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { useAuth } from '../components/AuthProvider'
-import { deleteAccount } from '../services/charactersApi'
+import { useAuth } from '../features/auth/model/AuthProvider'
+import { deleteAccount } from '../features/auth/api/authApi'
 import type { ApiValidationError } from '../types/character'
 
 export function ProfilePage() {

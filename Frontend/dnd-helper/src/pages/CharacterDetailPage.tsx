@@ -1,144 +1,28 @@
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
-import { useAuth } from '../components/AuthProvider'
-import { castCharacterSpell, getCharacterById, getCharacterOptions, getEquipmentCatalog, getRulesSpells, restCharacter, updateCharacter } from '../services/charactersApi'
+import { useAuth } from '../features/auth/model/AuthProvider'
+import { castCharacterSpell, getCharacterById, getCharacterOptions, restCharacter, updateCharacter } from '../features/characters/api/charactersApi'
+import { getEquipmentCatalog, getRulesSpells } from '../features/rules/api/rulesApi'
 import type { ApiValidationError, Character, ClassOption, EquipmentCatalogItem, RuleSpellItem } from '../types/character'
+import { availableSkills } from '../utils/characterPresentation'
 import {
-  availableSkills,
-  getCharacterPortrait,
-  translateSkill,
-  translateAbility,
-} from '../utils/characterPresentation'
-
-type EquippedSlots = { body: string | null; mainHand: string | null; offHand: string | null }
-type SpellModalState = {
-  slug?: string
-  name: string
-  circle: number
-  minLevel: number
-  classes: string[]
-  summary?: string
-  description?: string
-  damageDice?: string
-  damageType?: string
-}
-type RollEntry = {
-  id: string
-  label: string
-  expression: string
-  diceResult: number
-  modifier: number
-  total: number
-  createdAt: string
-}
-type CharacterNotice = {
-  id: string
-  text: string
-  kind: 'success' | 'error'
-}
-
-const skillAbilityMap: Record<string, string> = {
-  Acrobatics: 'DEX',
-  AnimalHandling: 'WIS',
-  Arcana: 'INT',
-  Athletics: 'STR',
-  Deception: 'CHA',
-  History: 'INT',
-  Insight: 'WIS',
-  Intimidation: 'CHA',
-  Investigation: 'INT',
-  Medicine: 'WIS',
-  Nature: 'INT',
-  Perception: 'WIS',
-  Performance: 'CHA',
-  Persuasion: 'CHA',
-  Religion: 'INT',
-  SleightOfHand: 'DEX',
-  Stealth: 'DEX',
-  Survival: 'WIS',
-}
-
-function parseEquipEntry(entry: string): EquippedSlots {
-  const fallback = { body: null, mainHand: null, offHand: null }
-  if (!entry.startsWith('equip:')) {
-    return fallback
-  }
-
-  const slotsRaw = entry.slice(6).split(';')
-  const slots = Object.fromEntries(
-    slotsRaw.map((part) => {
-      const [key, value] = part.split('=')
-      return [key, value ?? '']
-    }),
-  ) as Record<string, string>
-
-  return {
-    body: slots.body || null,
-    mainHand: slots.main || null,
-    offHand: slots.off || null,
-  }
-}
-
-function humanizeSpellFallback(value: string) {
-  return value.replaceAll('-', ' ')
-}
-
-function translateClassSlug(value: string) {
-  const map: Record<string, string> = {
-    barbarian: 'Варвар',
-    bard: 'Бард',
-    cleric: 'Жрец',
-    druid: 'Друид',
-    fighter: 'Воин',
-    monk: 'Монах',
-    paladin: 'Паладин',
-    ranger: 'Следопыт',
-    rogue: 'Плут',
-    sorcerer: 'Чародей',
-    warlock: 'Колдун',
-    wizard: 'Волшебник',
-  }
-  return map[value] ?? value
-}
-
-function translateDamageType(value?: string) {
-  const normalized = (value ?? '').trim().toLowerCase()
-  const map: Record<string, string> = {
-    slashing: 'рубящий',
-    piercing: 'колющий',
-    bludgeoning: 'дробящий',
-    fire: 'огненный',
-    cold: 'холод',
-    poison: 'яд',
-    thunder: 'гром',
-    lightning: 'молния',
-    radiant: 'сияние',
-    necrotic: 'некротический',
-    force: 'силовой',
-    psychic: 'психический',
-    acid: 'кислота',
-  }
-  return map[normalized] ?? value ?? ''
-}
-
-function parseDiceExpression(value?: string) {
-  const normalized = (value ?? '').trim().toLowerCase()
-  const match = normalized.match(/^(\d+)d(\d+)$/)
-  if (match) {
-    const count = Number(match[1])
-    const sides = Number(match[2])
-    if (count > 0 && sides > 0) {
-      return { count, sides, isFlat: false as const }
-    }
-  }
-
-  const flat = Number(normalized)
-  if (Number.isFinite(flat) && flat >= 0) {
-    return { count: flat, sides: 0, isFlat: true as const }
-  }
-
-  return null
-}
+  humanizeSpellFallback,
+  parseDiceExpression,
+  parseEquipEntry,
+  skillAbilityMap,
+  translateClassSlug,
+  translateDamageType,
+  type CharacterNotice,
+  type EquippedSlots,
+  type RollEntry,
+  type SpellModalState,
+} from '../features/character-detail/model/characterDetailModel'
+import { CharacterDetailHero } from '../widgets/character-detail/ui/CharacterDetailHero'
+import { DiceRollPanel } from '../widgets/character-detail/ui/DiceRollPanel'
+import { AbilityScoresPanel } from '../widgets/character-detail/ui/AbilityScoresPanel'
+import { CharacterSkillsPanel } from '../widgets/character-detail/ui/CharacterSkillsPanel'
+import { SavingThrowsPanel } from '../widgets/character-detail/ui/SavingThrowsPanel'
+import { SpellSlotsPanel } from '../widgets/character-detail/ui/SpellSlotsPanel'
 
 export function CharacterDetailPage() {
   const { user, isLoading: isAuthLoading } = useAuth()
@@ -747,67 +631,12 @@ export function CharacterDetailPage() {
         </Link>
       </div>
 
-      <section className="character-hero">
-        <div className="character-hero__identity">
-          <img
-            className="character-detail__portrait"
-            src={getCharacterPortrait(character.name, character.race, character.className)}
-            alt={`Портрет персонажа ${character.name}`}
-          />
-          <div>
-          <h2>{character.name}</h2>
-          <p className="section-text">
-            {character.race} • {character.className}
-            {character.subclass ? ` • ${character.subclass}` : ''} •{' '}
-            {character.background || 'Без предыстории'}
-          </p>
-          </div>
-        </div>
+      <CharacterDetailHero character={character} canEdit={canEditPage} />
 
-        <div className="badge-cluster">
-          <span className="pill">Уровень {character.level}</span>
-          {character.alignment ? <span className="pill">{character.alignment}</span> : null}
-          {canEditPage ? (
-            <Link to={`/characters/${character.id}/edit/identity`} className="secondary-button">
-              Редактировать
-            </Link>
-          ) : null}
-        </div>
-      </section>
-
-      <article className="surface-card">
-        <div className="section-header-row">
-          <h3>Броски кубов</h3>
-        </div>
-        <div className="skill-pick-grid">
-          {[4, 6, 8, 10, 12, 20, 100].map((sides) => (
-            <button key={sides} type="button" className="bonus-chip" onClick={() => registerRoll(`Свободный бросок d${sides}`, sides, 0)}>
-              d{sides}
-            </button>
-          ))}
-        </div>
-      </article>
+      <DiceRollPanel onRoll={registerRoll} />
 
       <section className="grid detail-layout">
-        <article className="surface-card">
-          <h3>Характеристики</h3>
-          <div className="ability-grid">
-            {character.abilities.map((ability) => (
-              <button
-                type="button"
-                className="ability-card ability-card--interactive button-reset"
-                key={ability.key}
-                onClick={() => registerRoll(`Проверка: ${translateAbility(ability.key)}`, 20, ability.modifier)}
-              >
-                <span className="ability-card__name">{translateAbility(ability.key)}</span>
-                <div className="ability-card__values">
-                  <strong>{ability.score}</strong>
-                  <small>{ability.modifier >= 0 ? `+${ability.modifier}` : ability.modifier}</small>
-                </div>
-              </button>
-            ))}
-          </div>
-        </article>
+        <AbilityScoresPanel abilities={character.abilities} onRoll={registerRoll} />
 
         <article className="surface-card">
           <h3>Ключевые показатели</h3>
@@ -916,56 +745,11 @@ export function CharacterDetailPage() {
           {saveStatus ? <p className={saveStatus.includes('Не удалось') ? 'inline-error' : 'success-text'}>{saveStatus}</p> : null}
         </article>
 
-        <article className="surface-card">
-          <h3>Навыки</h3>
-          <ul className="plain-list sheet-list">
-            {allSkills.map((skill) => (
-              <li key={skill.skillId}>
-                <button
-                  type="button"
-                  className="button-reset rollable-list-button sheet-list-button"
-                  onClick={() => registerRoll(`Навык: ${translateSkill(skill.skillId)}`, 20, skill.level)}
-                >
-                  {translateSkill(skill.skillId)} {skill.level >= 0 ? `+${skill.level}` : skill.level}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </article>
+        <CharacterSkillsPanel skills={allSkills} onRoll={registerRoll} />
 
-        <article className="surface-card">
-          <h3>Спасброски</h3>
-          <ul className="plain-list sheet-list">
-            {character.savingThrows.map((savingThrow) => (
-              <li key={savingThrow.ability}>
-                <button
-                  type="button"
-                  className="button-reset rollable-list-button sheet-list-button"
-                  onClick={() => registerRoll(`Спасбросок: ${translateAbility(savingThrow.ability)}`, 20, savingThrow.bonus)}
-                >
-                  {translateAbility(savingThrow.ability)} {savingThrow.bonus >= 0 ? `+${savingThrow.bonus}` : savingThrow.bonus}
-                  {savingThrow.isProficient ? ' • владение' : ''}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </article>
+        <SavingThrowsPanel savingThrows={character.savingThrows} onRoll={registerRoll} />
 
-        <article className="surface-card">
-          <h3>Ячейки заклинаний</h3>
-          <ul className="plain-list sheet-list">
-            {character.maxSpellSlots.length > 0
-              ? character.maxSpellSlots.map((slot) => {
-                  const current = character.spellSlots.find((item) => item.spellLevel === slot.spellLevel)?.slots ?? 0
-                  return (
-                <li key={slot.spellLevel}>
-                  <span className="sheet-list-static">Круг {slot.spellLevel}: {current}/{slot.slots}</span>
-                </li>
-                  )
-                })
-              : <li>Нет ячеек</li>}
-          </ul>
-        </article>
+        <SpellSlotsPanel currentSlots={character.spellSlots} maxSlots={character.maxSpellSlots} />
 
         <article className="surface-card">
           <div className="section-header-row">

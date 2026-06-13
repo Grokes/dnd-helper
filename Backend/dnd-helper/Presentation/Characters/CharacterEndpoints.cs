@@ -1,4 +1,5 @@
 using dnd_helper.Infrastructure.Persistence.Postgres;
+using dnd_helper.Presentation.Common;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -116,8 +117,7 @@ public static class CharacterEndpoints
             CreateCharacterRequest request,
             ClaimsPrincipal principal,
             UserManager<ApplicationUser> userManager,
-            AppDbContext dbContext,
-            CharacterCreationService creationService,
+            CreateCharacterUseCase useCase,
             CancellationToken cancellationToken) =>
         {
             var user = await userManager.GetUserAsync(principal);
@@ -126,15 +126,8 @@ public static class CharacterEndpoints
                 return Results.Unauthorized();
             }
 
-            var createResult = await creationService.BuildCharacterAsync(request, user.Id, cancellationToken);
-            if (!createResult.IsSuccess)
-            {
-                return Results.ValidationProblem(createResult.Errors!);
-            }
-
-            dbContext.Characters.Add(createResult.Character!);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Results.Created($"/api/characters/{createResult.Character!.Id}", createResult.Character.ToDto());
+            var result = await useCase.ExecuteAsync(request, user.Id, cancellationToken);
+            return result.ToHttpResult();
         }).RequireAuthorization();
 
         endpoints.MapPut("/api/characters/{id:guid}", async (
@@ -142,8 +135,7 @@ public static class CharacterEndpoints
             UpdateCharacterRequest request,
             ClaimsPrincipal principal,
             UserManager<ApplicationUser> userManager,
-            AppDbContext dbContext,
-            CharacterCreationService creationService,
+            UpdateCharacterUseCase useCase,
             CancellationToken cancellationToken) =>
         {
             var user = await userManager.GetUserAsync(principal);
@@ -152,76 +144,9 @@ public static class CharacterEndpoints
                 return Results.Unauthorized();
             }
 
-            var character = await dbContext.Characters.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
-            if (character is null)
-            {
-                return Results.NotFound();
-            }
-
             var isGameMaster = await userManager.IsInRoleAsync(user, ApplicationRoles.GameMaster);
-            var isOwner = character.OwnerUserId == user.Id;
-            if (!isGameMaster && !isOwner)
-            {
-                return Results.Forbid();
-            }
-
-            var normalizedRequest = new CreateCharacterRequest(
-                request.Name,
-                request.RaceId,
-                request.ClassId,
-                request.BackgroundId,
-                request.Level,
-                request.Alignment,
-                request.Notes,
-                request.BaseAbilities,
-                request.BonusAbilitySelections,
-                request.RaceSkillSelections,
-                request.ClassSkillSelections,
-                request.Spells,
-                request.Inventory);
-
-            var updateResult = await creationService.BuildCharacterAsync(normalizedRequest, character.OwnerUserId, cancellationToken);
-            if (!updateResult.IsSuccess)
-            {
-                return Results.ValidationProblem(updateResult.Errors!);
-            }
-
-            var rebuilt = updateResult.Character!;
-            var previousCurrentHitPoints = character.MaxHitPoints > 0
-                ? character.CurrentHitPoints
-                : character.HitPoints;
-            character.RaceId = rebuilt.RaceId;
-            character.ClassId = rebuilt.ClassId;
-            character.BackgroundId = rebuilt.BackgroundId;
-            character.Name = rebuilt.Name;
-            character.Race = rebuilt.Race;
-            character.ClassName = rebuilt.ClassName;
-            character.Subclass = rebuilt.Subclass;
-            character.Level = rebuilt.Level;
-            character.Background = rebuilt.Background;
-            character.Alignment = rebuilt.Alignment;
-            character.ArmorClass = rebuilt.ArmorClass;
-            character.WeaponDamage = rebuilt.WeaponDamage;
-            character.HitPoints = rebuilt.HitPoints;
-            character.MaxHitPoints = rebuilt.MaxHitPoints <= 0 ? rebuilt.HitPoints : rebuilt.MaxHitPoints;
-            character.CurrentHitPoints = Math.Clamp(previousCurrentHitPoints, 0, character.MaxHitPoints);
-            character.Speed = rebuilt.Speed;
-            character.ProficiencyBonus = rebuilt.ProficiencyBonus;
-            character.PassivePerception = rebuilt.PassivePerception;
-            character.Notes = rebuilt.Notes;
-            character.AbilitiesJson = rebuilt.AbilitiesJson;
-            character.BaseAbilitiesJson = rebuilt.BaseAbilitiesJson;
-            character.BonusAbilitySelectionsJson = rebuilt.BonusAbilitySelectionsJson;
-            character.SkillsJson = rebuilt.SkillsJson;
-            character.KnownSpellsJson = rebuilt.KnownSpellsJson;
-            character.SpellSlotsJson = rebuilt.SpellSlotsJson;
-            character.SpentSpellSlotsJson = character.SpentSpellSlotsJson;
-            character.InventoryJson = rebuilt.InventoryJson;
-            character.ComputedSnapshotJson = rebuilt.ComputedSnapshotJson;
-            character.CalculationTraceJson = rebuilt.CalculationTraceJson;
-            character.UpdatedAtUtc = DateTime.UtcNow;
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Results.Ok(character.ToDto(canEdit: isGameMaster || isOwner));
+            var result = await useCase.ExecuteAsync(id, request, user.Id, isGameMaster, cancellationToken);
+            return result.ToHttpResult();
         }).RequireAuthorization();
 
         endpoints.MapPost("/api/characters/{id:guid}/rest", async (
@@ -229,8 +154,7 @@ public static class CharacterEndpoints
             CharacterRestRequest request,
             ClaimsPrincipal principal,
             UserManager<ApplicationUser> userManager,
-            AppDbContext dbContext,
-            CharacterRestService restService,
+            RestCharacterUseCase useCase,
             CancellationToken cancellationToken) =>
         {
             var user = await userManager.GetUserAsync(principal);
@@ -239,27 +163,9 @@ public static class CharacterEndpoints
                 return Results.Unauthorized();
             }
 
-            var character = await dbContext.Characters.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
-            if (character is null)
-            {
-                return Results.NotFound();
-            }
-
             var isGameMaster = await userManager.IsInRoleAsync(user, ApplicationRoles.GameMaster);
-            var isOwner = character.OwnerUserId == user.Id;
-            if (!isGameMaster && !isOwner)
-            {
-                return Results.Forbid();
-            }
-
-            var restResult = restService.ApplyRest(character, request, canEdit: isOwner || isGameMaster);
-            if (!restResult.IsSuccess)
-            {
-                return Results.ValidationProblem(restResult.Errors!);
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Results.Ok(restResult.Result);
+            var result = await useCase.ExecuteAsync(id, request, user.Id, isGameMaster, cancellationToken);
+            return result.ToHttpResult();
         }).RequireAuthorization();
 
         endpoints.MapPost("/api/characters/{id:guid}/cast-spell", async (
@@ -267,8 +173,7 @@ public static class CharacterEndpoints
             CharacterCastSpellRequest request,
             ClaimsPrincipal principal,
             UserManager<ApplicationUser> userManager,
-            AppDbContext dbContext,
-            CharacterSpellService spellService,
+            CastCharacterSpellUseCase useCase,
             CancellationToken cancellationToken) =>
         {
             var user = await userManager.GetUserAsync(principal);
@@ -277,32 +182,9 @@ public static class CharacterEndpoints
                 return Results.Unauthorized();
             }
 
-            var character = await dbContext.Characters.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
-            if (character is null)
-            {
-                return Results.NotFound();
-            }
-
             var isGameMaster = await userManager.IsInRoleAsync(user, ApplicationRoles.GameMaster);
-            var isOwner = character.OwnerUserId == user.Id;
-            if (!isGameMaster && !isOwner)
-            {
-                return Results.Forbid();
-            }
-
-            var spellResult = await spellService.CastAsync(character, request, cancellationToken);
-            if (spellResult.IsNotFound)
-            {
-                return Results.NotFound();
-            }
-
-            if (!spellResult.IsSuccess)
-            {
-                return Results.ValidationProblem(spellResult.Errors!);
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken);
-            return Results.Ok(spellResult.Result);
+            var result = await useCase.ExecuteAsync(id, request, user.Id, isGameMaster, cancellationToken);
+            return result.ToHttpResult();
         }).RequireAuthorization();
 
         return endpoints;
