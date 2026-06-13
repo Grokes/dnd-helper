@@ -1,0 +1,15 @@
+global using dnd_helper.Application.Auth;
+global using dnd_helper.Application.Characters;
+global using dnd_helper.Application.Common.Dice;
+global using dnd_helper.Application.ReferenceData;
+global using dnd_helper.Application.Rooms;
+global using dnd_helper.Application.Rules;
+global using dnd_helper.Domain.Characters;
+global using dnd_helper.Domain.Rooms;
+global using dnd_helper.Infrastructure.Identity;
+global using dnd_helper.Presentation.Auth;
+global using dnd_helper.Presentation.Characters;
+global using dnd_helper.Presentation.Equipment;
+global using dnd_helper.Presentation.Monsters;
+global using dnd_helper.Presentation.Rooms;
+global using dnd_helper.Presentation.Rules;

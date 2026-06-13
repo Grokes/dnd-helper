@@ -58,8 +58,6 @@ export type Character = CharacterSummary & {
   spellSlots: Array<{ spellLevel: number; slots: number }>
   maxSpellSlots: Array<{ spellLevel: number; slots: number }>
   knownSpells: string[]
-  preparedSpells: string[]
-  activeEffects: string[]
   calculationTrace: Array<{
     target: string
     source: string

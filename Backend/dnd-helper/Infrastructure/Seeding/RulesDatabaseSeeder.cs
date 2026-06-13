@@ -1,5 +1,3 @@
-using dnd_helper.Features.Rules;
-using dnd_helper.Features.ReferenceData;
 using dnd_helper.Infrastructure.Persistence.Mongo;
 using Microsoft.Extensions.Logging;
 
@@ -496,8 +494,12 @@ public sealed class RulesDatabaseSeeder(
         var monsters = new[]
         {
             Creature("bat", "Летучая мышь", "Tiny", "beast", "unaligned", 0m, 12, 1, "1d4-1", 5, "Укус", 0, "1", 0, "piercing"),
+            Creature("baboon", "Павиан", "Small", "beast", "unaligned", 0m, 12, 3, "1d6", 30, "Укус", 1, "1d4", 0, "piercing"),
+            Creature("badger", "Барсук", "Tiny", "beast", "unaligned", 0m, 10, 3, "1d4+1", 20, "Укус", 2, "1", 0, "piercing"),
+            Creature("boar", "Кабан", "Medium", "beast", "unaligned", 0.25m, 11, 11, "2d8+2", 40, "Клык", 3, "1d6", 1, "slashing"),
             Creature("cat", "Кошка", "Tiny", "beast", "unaligned", 0m, 12, 2, "1d4", 40, "Когти", 0, "1", 0, "slashing"),
             Creature("crab", "Краб", "Tiny", "beast", "unaligned", 0m, 11, 2, "1d4", 20, "Клешня", 0, "1", 0, "bludgeoning"),
+            Creature("deer", "Олень", "Medium", "beast", "unaligned", 0m, 13, 4, "1d8", 50, "Удар рогами", 2, "1d4", 0, "piercing"),
             Creature("frog", "Лягушка", "Tiny", "beast", "unaligned", 0m, 11, 1, "1d4-1", 20, "Укус", 0, "1", 0, "piercing"),
             Creature("hawk", "Ястреб", "Tiny", "beast", "unaligned", 0m, 13, 1, "1d4-1", 10, "Когти", 5, "1", 0, "slashing"),
             Creature("lizard", "Ящерица", "Tiny", "beast", "unaligned", 0m, 10, 2, "1d4", 20, "Укус", 0, "1", 0, "piercing"),
@@ -511,13 +513,57 @@ public sealed class RulesDatabaseSeeder(
             Creature("spider", "Паук", "Tiny", "beast", "unaligned", 0m, 12, 1, "1d4-1", 20, "Укус", 4, "1", 0, "piercing"),
             Creature("weasel", "Ласка", "Tiny", "beast", "unaligned", 0m, 13, 1, "1d4-1", 30, "Укус", 5, "1", 0, "piercing"),
             Creature("mastiff", "Мастиф", "Medium", "beast", "unaligned", 0.125m, 12, 5, "1d8+1", 40, "Укус", 3, "1d6", 1, "piercing"),
+            Creature("ape", "Обезьяна", "Medium", "beast", "unaligned", 0.5m, 12, 19, "3d8+6", 30, "Кулак", 5, "1d6", 3, "bludgeoning"),
+            Creature("black-bear", "Чёрный медведь", "Medium", "beast", "unaligned", 0.5m, 11, 19, "3d8+6", 40, "Укус", 3, "1d6", 2, "piercing"),
+            Creature("crocodile", "Крокодил", "Large", "beast", "unaligned", 0.5m, 12, 19, "3d10+3", 20, "Укус", 4, "1d10", 2, "piercing"),
+            Creature("giant-badger", "Гигантский барсук", "Medium", "beast", "unaligned", 0.25m, 10, 13, "2d8+4", 30, "Укус", 3, "1d6", 1, "piercing"),
+            Creature("giant-bat", "Гигантская летучая мышь", "Large", "beast", "unaligned", 0.25m, 13, 22, "4d10", 10, "Укус", 4, "1d6", 2, "piercing"),
+            Creature("giant-centipede", "Гигантская многоножка", "Small", "beast", "unaligned", 0.25m, 13, 4, "1d6+1", 30, "Укус", 4, "1d4", 2, "piercing"),
+            Creature("giant-crab", "Гигантский краб", "Medium", "beast", "unaligned", 0.125m, 15, 13, "3d8", 30, "Клешня", 3, "1d6", 1, "bludgeoning"),
+            Creature("giant-frog", "Гигантская лягушка", "Medium", "beast", "unaligned", 0.25m, 11, 18, "4d8", 30, "Укус", 3, "1d6", 1, "piercing"),
+            Creature("giant-goat", "Гигантский козёл", "Large", "beast", "unaligned", 0.5m, 11, 19, "3d10+3", 40, "Таран", 3, "2d4", 1, "bludgeoning"),
+            Creature("giant-lizard", "Гигантская ящерица", "Large", "beast", "unaligned", 0.25m, 12, 19, "3d10+3", 30, "Укус", 4, "1d8", 2, "piercing"),
+            Creature("giant-poisonous-snake", "Гигантская ядовитая змея", "Medium", "beast", "unaligned", 0.25m, 14, 11, "2d8+2", 30, "Укус", 6, "1d4", 4, "piercing"),
+            Creature("giant-rat", "Гигантская крыса", "Small", "beast", "unaligned", 0.125m, 12, 7, "2d6", 30, "Укус", 4, "1d4", 2, "piercing"),
+            Creature("giant-spider", "Гигантский паук", "Large", "beast", "unaligned", 1m, 14, 26, "4d10+4", 30, "Укус", 5, "1d8", 3, "piercing"),
+            Creature("giant-toad", "Гигантская жаба", "Large", "beast", "unaligned", 1m, 11, 39, "6d10+6", 20, "Укус", 4, "1d10", 2, "piercing"),
+            Creature("giant-vulture", "Гигантский гриф", "Large", "beast", "neutral evil", 1m, 10, 22, "3d10+6", 10, "Клюв", 4, "2d4", 2, "piercing"),
+            Creature("giant-weasel", "Гигантская ласка", "Medium", "beast", "unaligned", 0.125m, 13, 9, "2d8", 40, "Укус", 5, "1d4", 3, "piercing"),
+            Creature("giant-wolf-spider", "Гигантский волчий паук", "Medium", "beast", "unaligned", 0.25m, 13, 11, "2d8+2", 40, "Укус", 3, "1d6", 1, "piercing"),
+            Creature("lion", "Лев", "Large", "beast", "unaligned", 1m, 12, 26, "4d10+4", 50, "Укус", 5, "1d8", 3, "piercing"),
             Creature("pony", "Пони", "Medium", "beast", "unaligned", 0.125m, 10, 11, "2d8+2", 40, "Копыта", 4, "2d4", 2, "bludgeoning"),
             Creature("riding-horse", "Верховая лошадь", "Large", "beast", "unaligned", 0.25m, 10, 13, "2d10+2", 60, "Копыта", 4, "2d4", 2, "bludgeoning"),
+            Creature("tiger", "Тигр", "Large", "beast", "unaligned", 1m, 12, 37, "5d10+10", 40, "Укус", 5, "1d10", 3, "piercing"),
             Creature("wolf", "Волк", "Medium", "beast", "unaligned", 0.25m, 13, 11, "2d8+2", 40, "Укус", 4, "2d4", 2, "piercing"),
+            Creature("dire-wolf", "Ужасный волк", "Large", "beast", "unaligned", 1m, 14, 37, "5d10+10", 50, "Укус", 5, "2d6", 3, "piercing"),
             Creature("panther", "Пантера", "Medium", "beast", "unaligned", 0.25m, 12, 13, "3d8", 50, "Укус", 4, "1d6", 2, "piercing"),
             Creature("brown-bear", "Бурый медведь", "Large", "beast", "unaligned", 1m, 11, 34, "4d10+12", 40, "Укус", 5, "1d8", 4, "piercing"),
             Creature("giant-eagle", "Гигантский орёл", "Large", "beast", "neutral good", 1m, 13, 26, "4d10+4", 10, "Когти", 5, "2d6", 3, "slashing"),
-            Creature("giant-owl", "Гигантская сова", "Large", "beast", "neutral", 0.25m, 12, 19, "3d10+3", 5, "Когти", 3, "2d6", 1, "slashing")
+            Creature("giant-owl", "Гигантская сова", "Large", "beast", "neutral", 0.25m, 12, 19, "3d10+3", 5, "Когти", 3, "2d6", 1, "slashing"),
+            Creature("kobold", "Кобольд", "Small", "humanoid", "lawful evil", 0.125m, 12, 5, "2d6-2", 30, "Кинжал", 4, "1d4", 2, "piercing"),
+            Creature("goblin", "Гоблин", "Small", "humanoid", "neutral evil", 0.25m, 15, 7, "2d6", 30, "Скимитар", 4, "1d6", 2, "slashing"),
+            Creature("grimlock", "Гримлок", "Medium", "humanoid", "neutral evil", 0.25m, 11, 11, "2d8+2", 30, "Костяное копьё", 5, "1d6", 3, "piercing"),
+            Creature("orc", "Орк", "Medium", "humanoid", "chaotic evil", 0.5m, 13, 15, "2d8+6", 30, "Секира", 5, "1d12", 3, "slashing"),
+            Creature("hobgoblin", "Хобгоблин", "Medium", "humanoid", "lawful evil", 0.5m, 18, 11, "2d8+2", 30, "Длинный меч", 3, "1d8", 1, "slashing"),
+            Creature("gnoll", "Гнолл", "Medium", "humanoid", "chaotic evil", 0.5m, 15, 22, "5d8", 30, "Копьё", 4, "1d6", 2, "piercing"),
+            Creature("bugbear", "Багбир", "Medium", "humanoid", "chaotic evil", 1m, 16, 27, "5d8+5", 30, "Утренняя звезда", 4, "2d8", 2, "piercing"),
+            Creature("skeleton", "Скелет", "Medium", "undead", "lawful evil", 0.25m, 13, 13, "2d8+4", 30, "Короткий меч", 4, "1d6", 2, "piercing"),
+            Creature("zombie", "Зомби", "Medium", "undead", "neutral evil", 0.25m, 8, 22, "3d8+9", 20, "Удар", 3, "1d6", 1, "bludgeoning"),
+            Creature("ghoul", "Гуль", "Medium", "undead", "chaotic evil", 1m, 12, 22, "5d8", 30, "Когти", 4, "2d4", 2, "slashing"),
+            Creature("wight", "Умертвие", "Medium", "undead", "neutral evil", 3m, 14, 45, "6d8+18", 30, "Длинный меч", 4, "1d8", 2, "slashing"),
+            Creature("ogre", "Огр", "Large", "giant", "chaotic evil", 2m, 11, 59, "7d10+21", 40, "Палица", 6, "2d8", 4, "bludgeoning"),
+            Creature("owlbear", "Сова-медведь", "Large", "monstrosity", "unaligned", 3m, 13, 59, "7d10+21", 40, "Клюв", 7, "1d10", 5, "piercing"),
+            Creature("griffon", "Грифон", "Large", "monstrosity", "unaligned", 2m, 12, 59, "7d10+21", 30, "Клюв", 6, "1d8", 4, "piercing"),
+            Creature("hippogriff", "Гиппогриф", "Large", "monstrosity", "unaligned", 1m, 11, 19, "3d10+3", 40, "Клюв", 5, "1d10", 3, "piercing"),
+            Creature("harpy", "Гарпия", "Medium", "monstrosity", "chaotic evil", 1m, 11, 38, "7d8+7", 20, "Когти", 3, "2d4", 1, "slashing"),
+            Creature("gargoyle", "Горгулья", "Medium", "elemental", "chaotic evil", 2m, 15, 52, "7d8+21", 30, "Когти", 4, "1d6", 2, "slashing"),
+            Creature("gelatinous-cube", "Студенистый куб", "Large", "ooze", "unaligned", 2m, 6, 84, "8d10+40", 15, "Ложноножка", 3, "3d6", 0, "acid"),
+            Creature("mimic", "Мимик", "Medium", "monstrosity", "neutral", 2m, 12, 58, "9d8+18", 15, "Укус", 5, "1d8", 3, "piercing"),
+            Creature("minotaur", "Минотавр", "Large", "monstrosity", "chaotic evil", 3m, 14, 76, "9d10+27", 40, "Секира", 6, "2d12", 4, "slashing"),
+            Creature("manticore", "Мантикора", "Large", "monstrosity", "lawful evil", 3m, 14, 68, "8d10+24", 30, "Укус", 5, "1d8", 3, "piercing"),
+            Creature("ettin", "Эттин", "Large", "giant", "chaotic evil", 4m, 12, 85, "10d10+30", 40, "Боевой топор", 7, "2d8", 5, "slashing"),
+            Creature("troll", "Тролль", "Large", "giant", "chaotic evil", 5m, 15, 84, "8d10+40", 30, "Когти", 7, "2d6", 4, "slashing"),
+            Creature("young-red-dragon", "Молодой красный дракон", "Large", "dragon", "chaotic evil", 10m, 18, 178, "17d10+85", 40, "Укус", 10, "2d10", 6, "piercing")
         };
 
         foreach (var item in monsters)

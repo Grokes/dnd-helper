@@ -38,6 +38,34 @@ function translateDamageType(value?: string) {
     fire: 'огненный',
     cold: 'холод',
     poison: 'яд',
+    acid: 'кислотный',
+  }
+  return map[normalized] ?? value ?? ''
+}
+
+function translateMonsterMeta(value?: string) {
+  const normalized = (value ?? '').trim().toLowerCase()
+  const map: Record<string, string> = {
+    tiny: 'Крошечный',
+    small: 'Маленький',
+    medium: 'Средний',
+    large: 'Большой',
+    huge: 'Огромный',
+    gargantuan: 'Громадный',
+    beast: 'Зверь',
+    humanoid: 'Гуманоид',
+    undead: 'Нежить',
+    monstrosity: 'Монстр',
+    giant: 'Великан',
+    dragon: 'Дракон',
+    ooze: 'Слизь',
+    elemental: 'Элементаль',
+    unaligned: 'Без мировоззрения',
+    neutral: 'Нейтральный',
+    'neutral good': 'Нейтрально-добрый',
+    'neutral evil': 'Нейтрально-злой',
+    'chaotic evil': 'Хаотично-злой',
+    'lawful evil': 'Законно-злой',
   }
   return map[normalized] ?? value ?? ''
 }
@@ -511,7 +539,7 @@ export function RoomDetailPage() {
                     <strong>{monster.name}</strong>
                     <span className="pill">CR {monster.challengeRating ?? 0}</span>
                   </div>
-                  <p className="muted">{monster.size} • {monster.creatureType} • {monster.alignment}</p>
+                  <p className="muted">{translateMonsterMeta(monster.size)} • {translateMonsterMeta(monster.creatureType)} • {translateMonsterMeta(monster.alignment)}</p>
                   <p className="muted">КД {monster.armorClass} • ХП {monster.hitPoints}</p>
                   <p className="muted">
                     {monster.attackName}: +{monster.attackBonus} • {monster.damageDice}

@@ -1,4 +1,3 @@
-using dnd_helper.Features.Rules;
 using MongoDB.Driver;
 
 namespace dnd_helper.Infrastructure.Persistence.Mongo;
@@ -17,6 +16,16 @@ public sealed class MongoRulesCatalogRepository(IMongoDatabase database) : IRule
 
     public async Task EnsureIndexesAsync(CancellationToken cancellationToken = default)
     {
+        await DeduplicateRulesetCollectionAsync(cancellationToken);
+        await DeduplicateRulesCollectionAsync(_races, cancellationToken);
+        await DeduplicateRulesCollectionAsync(_classes, cancellationToken);
+        await DeduplicateRulesCollectionAsync(_backgrounds, cancellationToken);
+        await DeduplicateRulesCollectionAsync(_features, cancellationToken);
+        await DeduplicateRulesCollectionAsync(_spells, cancellationToken);
+        await DeduplicateRulesCollectionAsync(_equipment, cancellationToken);
+        await DeduplicateRulesCollectionAsync(_monsters, cancellationToken);
+        await DeduplicateRulesCollectionAsync(_conditions, cancellationToken);
+
         await CreateRulesetSlugIndexAsync(_races, cancellationToken);
         await CreateRulesetSlugIndexAsync(_classes, cancellationToken);
         await CreateRulesetSlugIndexAsync(_backgrounds, cancellationToken);
@@ -161,6 +170,55 @@ public sealed class MongoRulesCatalogRepository(IMongoDatabase database) : IRule
             Builders<RulesetDocument>.Filter.Eq(x => x.Slug, document.Slug),
             document,
             new ReplaceOptions { IsUpsert = true },
+            cancellationToken);
+    }
+
+    private async Task DeduplicateRulesetCollectionAsync(CancellationToken cancellationToken)
+    {
+        var rulesets = await _rulesets
+            .Find(Builders<RulesetDocument>.Filter.Empty)
+            .SortByDescending(item => item.Id)
+            .ToListAsync(cancellationToken);
+
+        var duplicateIds = rulesets
+            .GroupBy(item => item.Slug, StringComparer.OrdinalIgnoreCase)
+            .SelectMany(group => group.Skip(1))
+            .Select(item => item.Id)
+            .ToArray();
+
+        if (duplicateIds.Length == 0)
+        {
+            return;
+        }
+
+        await _rulesets.DeleteManyAsync(
+            Builders<RulesetDocument>.Filter.In(item => item.Id, duplicateIds),
+            cancellationToken);
+    }
+
+    private static async Task DeduplicateRulesCollectionAsync<TDocument>(
+        IMongoCollection<TDocument> collection,
+        CancellationToken cancellationToken)
+        where TDocument : RuleDocumentBase
+    {
+        var documents = await collection
+            .Find(Builders<TDocument>.Filter.Empty)
+            .SortByDescending(item => item.Id)
+            .ToListAsync(cancellationToken);
+
+        var duplicateIds = documents
+            .GroupBy(item => $"{item.RulesetId}::{item.Slug}", StringComparer.OrdinalIgnoreCase)
+            .SelectMany(group => group.Skip(1))
+            .Select(item => item.Id)
+            .ToArray();
+
+        if (duplicateIds.Length == 0)
+        {
+            return;
+        }
+
+        await collection.DeleteManyAsync(
+            Builders<TDocument>.Filter.In(item => item.Id, duplicateIds),
             cancellationToken);
     }
 }

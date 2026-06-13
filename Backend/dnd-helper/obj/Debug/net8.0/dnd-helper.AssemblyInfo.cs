@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("dnd-helper")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+18cbeb176cfaec85464936bcd6598e898895c4d3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ae8b17def1e9a49dc5873afc6522c65585e110e1")]
 [assembly: System.Reflection.AssemblyProductAttribute("dnd-helper")]
 [assembly: System.Reflection.AssemblyTitleAttribute("dnd-helper")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

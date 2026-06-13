@@ -1,6 +1,3 @@
-using dnd_helper.Features.Auth;
-using dnd_helper.Features.Characters;
-using dnd_helper.Features.Rooms;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -46,9 +43,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.Property(item => item.KnownSpellsJson).HasColumnName("known_spells_json");
             entity.Property(item => item.SpellSlotsJson).HasColumnName("spell_slots_json");
             entity.Property(item => item.SpentSpellSlotsJson).HasColumnName("spent_spell_slots_json");
-            entity.Property(item => item.PreparedSpellsJson).HasColumnName("prepared_spells_json");
             entity.Property(item => item.InventoryJson).HasColumnName("inventory_json");
-            entity.Property(item => item.ActiveEffectsJson).HasColumnName("active_effects_json");
             entity.Property(item => item.ComputedSnapshotJson).HasColumnName("computed_snapshot_json");
             entity.Property(item => item.CalculationTraceJson).HasColumnName("calculation_trace_json");
             entity.Property(item => item.CreatedAtUtc).HasColumnName("created_at_utc");

@@ -28,6 +28,8 @@ import {
 } from '../utils/characterPresentation'
 
 const abilityOrder = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'] as const
+const abilityScoreMin = 3
+const abilityScoreMax = 18
 const draftStorageKey = 'dnd-helper.character-draft'
 const steps = ['identity', 'race', 'class', 'background', 'abilities', 'spells', 'inventory', 'review'] as const
 
@@ -781,9 +783,9 @@ export function CharacterCreatePage() {
     if (
       draft.baseAbilities.length !== abilityOrder.length ||
       draft.baseAbilities.some((ability) => !abilityOrder.includes(ability.key as (typeof abilityOrder)[number])) ||
-      draft.baseAbilities.some((ability) => ability.score < 8 || ability.score > 15)
+      draft.baseAbilities.some((ability) => ability.score < abilityScoreMin || ability.score > abilityScoreMax)
     ) {
-      result.abilities = ['Базовые характеристики задаются вручную, но каждая должна быть в диапазоне от 8 до 15.']
+      result.abilities = [`Базовые характеристики должны быть в диапазоне от ${abilityScoreMin} до ${abilityScoreMax}.`]
     }
 
     if (selectedRace?.skillChoiceRule) {
@@ -869,12 +871,27 @@ export function CharacterCreatePage() {
   }
 
   function updateBaseAbility(key: string, score: number) {
-    const clampedValue = Math.min(15, Math.max(8, Number.isNaN(score) ? 8 : score))
+    const clampedValue = Math.min(abilityScoreMax, Math.max(abilityScoreMin, Number.isNaN(score) ? 10 : score))
     setDraft((current) => ({
       ...current,
       baseAbilities: current.baseAbilities.map((ability) =>
         ability.key === key ? { ...ability, score: clampedValue } : ability,
       ),
+    }))
+  }
+
+  function rollAbilityScore() {
+    const rolls = Array.from({ length: 4 }, () => Math.floor(Math.random() * 6) + 1)
+    return rolls
+      .sort((left, right) => right - left)
+      .slice(0, 3)
+      .reduce((sum, value) => sum + value, 0)
+  }
+
+  function randomizeBaseAbilities() {
+    setDraft((current) => ({
+      ...current,
+      baseAbilities: abilityOrder.map((key) => ({ key, score: rollAbilityScore() })),
     }))
   }
 
@@ -1520,7 +1537,7 @@ export function CharacterCreatePage() {
                 <h4>Классовые особенности по уровню</h4>
                 <div className="stack">
                   {groupedClassFeatures.length > 0 ? groupedClassFeatures.map(([level, features]) => (
-                    <article key={`level-${level}`} className="surface-card modal-detail">
+                    <article key={`level-${level}`} className="surface-card modal-detail class-feature-level-card">
                       <button
                         type="button"
                         className="disclosure-button"
@@ -1599,7 +1616,10 @@ export function CharacterCreatePage() {
           {currentStep === 'abilities' ? (
             <article className="surface-card builder-section">
               <h3>Характеристики</h3>
-              <p className="muted">Каждую базовую характеристику можно задать вручную в пределах от 8 до 15. Расовые бонусы применяются автоматически и сразу видны в расчёте.</p>
+              <p className="muted">Каждую базовую характеристику можно задать вручную в пределах от 3 до 18. Расовые бонусы применяются автоматически и сразу видны в расчёте.</p>
+              <button type="button" className="secondary-button button-reset ability-random-button" onClick={randomizeBaseAbilities}>
+                Случайно распределить характеристики
+              </button>
               <div className="ability-builder-grid compact">
                 {computedAbilities.map((ability) => (
                   <article className="ability-builder-card compact" key={ability.key}>
@@ -1619,8 +1639,8 @@ export function CharacterCreatePage() {
                         </button>
                         <input
                           type="number"
-                          min={8}
-                          max={15}
+                          min={abilityScoreMin}
+                          max={abilityScoreMax}
                           value={ability.baseScore}
                           onChange={(event) => updateBaseAbility(ability.key, Number(event.target.value))}
                         />
@@ -1826,7 +1846,7 @@ export function CharacterCreatePage() {
             <article className="surface-card builder-section">
               <h3>Проверка и завершение</h3>
               <p className="muted">Итоговый лист персонажа с применёнными бонусами и выбранными владениями.</p>
-              <div className="review-sheet">
+              <div className="review-sheet review-sheet--vertical">
                 <div className="review-head">
                   <div className="review-field"><span>Имя</span><strong>{draft.name || '—'}</strong></div>
                   <div className="review-field"><span>Предыстория</span><strong>{selectedBackground.name}</strong></div>

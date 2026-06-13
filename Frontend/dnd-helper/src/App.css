@@ -1089,6 +1089,13 @@
   color: var(--muted-strong);
 }
 
+.form-grid label.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: fit-content;
+}
+
 .full-span {
   grid-column: 1 / -1;
 }
@@ -1106,6 +1113,13 @@
   padding: 10px 12px;
   font: inherit;
   color: var(--text);
+}
+
+.form-grid label.checkbox-row input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #8fa7ff;
 }
 
 .app-search-input {
@@ -1366,6 +1380,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.ability-random-button {
+  width: fit-content;
+}
+
 .ability-builder-card {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1554,6 +1572,20 @@
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
 }
 
+.review-sheet--vertical {
+  max-width: 760px;
+  align-self: start;
+}
+
+.review-sheet--vertical .review-head,
+.review-sheet--vertical .status-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.review-sheet--vertical .review-abilities {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .review-head {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1652,6 +1684,10 @@
   padding: 14px;
 }
 
+.class-feature-level-card .skill-pick-grid {
+  margin-top: 14px;
+}
+
 .disclosure-button {
   width: 100%;
   display: flex;
@@ -1678,6 +1714,18 @@
 }
 
 @media (max-width: 1100px) {
+  .app-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .header-nav {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .hero-panel,
   .three-columns,
   .two-columns,
@@ -1728,10 +1776,64 @@
     min-height: 78px;
   }
 
+  .app-header {
+    gap: 12px;
+  }
+
+  .brand-panel {
+    width: 100%;
+  }
+
+  .brand-name {
+    font-size: 0.9rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.76rem;
+  }
+
+  .header-nav {
+    width: calc(100% + 4px);
+    margin: 0 -2px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+
+  .header-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-item,
+  .profile-menu__trigger {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .profile-menu {
+    position: static;
+  }
+
+  .profile-menu__popover {
+    position: fixed;
+    top: auto;
+    right: 14px;
+    left: 14px;
+    bottom: 14px;
+    min-width: 0;
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+    border-radius: 16px;
+  }
+
   .section-header-row,
   .character-hero,
   .character-hero__identity,
-  .preview-card__identity {
+  .preview-card__identity,
+  .room-card__header,
+  .room-member-row,
+  .room-hero {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1768,6 +1870,45 @@
   .character-card__portrait {
     width: 100%;
     height: 120px;
+  }
+
+  .character-detail-top-actions .secondary-button,
+  .section-header-row .secondary-button,
+  .section-header-row .primary-button {
+    width: 100%;
+  }
+
+  .room-role-editor,
+  .room-hero__actions,
+  .room-monster-actions label,
+  .room-monster-actions .app-select,
+  .room-monster-actions .app-search-input {
+    width: 100%;
+  }
+
+  .room-monster-picker-modal,
+  .modal-card {
+    width: min(100%, calc(100vw - 20px));
+    max-height: calc(100vh - 20px);
+    padding: 14px;
+  }
+
+  .catalog-tab {
+    flex: 1 1 calc(50% - 8px);
+    text-align: center;
+  }
+
+  .catalog-card,
+  .choice-card,
+  .room-monster-picker-card {
+    padding: 12px;
+  }
+
+  .sheet-list-button,
+  .rollable-list-button {
+    width: 100%;
+    justify-content: space-between;
+    padding: 8px 10px;
   }
 
   .wizard-actions .primary-button,

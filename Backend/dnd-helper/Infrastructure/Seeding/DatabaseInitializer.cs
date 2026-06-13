@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using System.Text.Json;
 
 namespace dnd_helper.Infrastructure.Seeding;
 
@@ -13,10 +14,14 @@ public sealed class DatabaseInitializer(
     IHostEnvironment environment,
     ILogger<DatabaseInitializer> logger)
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Initializing PostgreSQL schema...");
         await EnsurePostgresSchemaAsync(cancellationToken);
+        await RemoveObsoletePostgresColumnsAsync(cancellationToken);
+        await NormalizePostgresDataAsync(cancellationToken);
 
         logger.LogInformation("Initializing MongoDB rules catalog...");
         await rulesSeeder.SeedAsync(cancellationToken);
@@ -115,6 +120,75 @@ public sealed class DatabaseInitializer(
         await dbContext.Database.EnsureCreatedAsync(cancellationToken);
     }
 
+    private async Task RemoveObsoletePostgresColumnsAsync(CancellationToken cancellationToken)
+    {
+        var obsoleteColumns = new[]
+        {
+            ("characters", "prepared_spells_json"),
+            ("characters", "active_effects_json"),
+        };
+
+        foreach (var (tableName, columnName) in obsoleteColumns)
+        {
+            if (!await HasColumnAsync(tableName, columnName, cancellationToken))
+            {
+                continue;
+            }
+
+            logger.LogInformation("Removing obsolete PostgreSQL column {Table}.{Column}...", tableName, columnName);
+            await dbContext.Database.ExecuteSqlAsync(
+                $"ALTER TABLE {tableName} DROP COLUMN IF EXISTS {columnName};",
+                cancellationToken);
+        }
+    }
+
+    private async Task NormalizePostgresDataAsync(CancellationToken cancellationToken)
+    {
+        var characters = await dbContext.Characters.ToListAsync(cancellationToken);
+        var changed = false;
+
+        foreach (var character in characters)
+        {
+            var normalizedKnownSpells = NormalizeStringArray(character.KnownSpellsJson);
+            if (!string.Equals(character.KnownSpellsJson, normalizedKnownSpells, StringComparison.Ordinal))
+            {
+                character.KnownSpellsJson = normalizedKnownSpells;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(character.SpentSpellSlotsJson))
+            {
+                character.SpentSpellSlotsJson = "{}";
+                changed = true;
+            }
+
+            if (character.MaxHitPoints <= 0 && character.HitPoints > 0)
+            {
+                character.MaxHitPoints = character.HitPoints;
+                character.CurrentHitPoints = Math.Clamp(character.CurrentHitPoints > 0 ? character.CurrentHitPoints : character.HitPoints, 0, character.MaxHitPoints);
+                changed = true;
+            }
+
+            if (character.MaxHitPoints > 0)
+            {
+                var clampedCurrentHitPoints = Math.Clamp(character.CurrentHitPoints, 0, character.MaxHitPoints);
+                if (clampedCurrentHitPoints != character.CurrentHitPoints)
+                {
+                    character.CurrentHitPoints = clampedCurrentHitPoints;
+                    changed = true;
+                }
+            }
+        }
+
+        if (!changed)
+        {
+            return;
+        }
+
+        logger.LogInformation("Applying PostgreSQL data normalization for characters...");
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<bool> HasColumnAsync(string tableName, string columnName, CancellationToken cancellationToken)
     {
         var connection = (NpgsqlConnection)dbContext.Database.GetDbConnection();
@@ -156,5 +230,29 @@ public sealed class DatabaseInitializer(
         command.Parameters.AddWithValue("tableName", tableName);
         var result = await command.ExecuteScalarAsync(cancellationToken);
         return result is bool exists && exists;
+    }
+
+    private static string NormalizeStringArray(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return "[]";
+        }
+
+        try
+        {
+            var values = JsonSerializer.Deserialize<List<string>>(source, JsonOptions) ?? [];
+            var normalized = values
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return JsonSerializer.Serialize(normalized, JsonOptions);
+        }
+        catch
+        {
+            return "[]";
+        }
     }
 }
