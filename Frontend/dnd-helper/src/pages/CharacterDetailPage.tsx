@@ -23,6 +23,10 @@ import { AbilityScoresPanel } from '../widgets/character-detail/ui/AbilityScores
 import { CharacterSkillsPanel } from '../widgets/character-detail/ui/CharacterSkillsPanel'
 import { SavingThrowsPanel } from '../widgets/character-detail/ui/SavingThrowsPanel'
 import { SpellSlotsPanel } from '../widgets/character-detail/ui/SpellSlotsPanel'
+import { KeyMetricsPanel } from '../widgets/character-detail/ui/KeyMetricsPanel'
+import { KnownSpellsPanel } from '../widgets/character-detail/ui/KnownSpellsPanel'
+import { InventoryPanel } from '../widgets/character-detail/ui/InventoryPanel'
+import { CharacterNotesPanel } from '../widgets/character-detail/ui/CharacterNotesPanel'
 
 export function CharacterDetailPage() {
   const { user, isLoading: isAuthLoading } = useAuth()
@@ -638,112 +642,22 @@ export function CharacterDetailPage() {
       <section className="grid detail-layout">
         <AbilityScoresPanel abilities={character.abilities} onRoll={registerRoll} />
 
-        <article className="surface-card">
-          <h3>Ключевые показатели</h3>
-          <div className="compact-stats">
-            <div className="key-metric">
-              <span>Класс доспеха</span>
-              <strong>{character.armorClass}</strong>
-            </div>
-            <div className="key-metric">
-              <span>Хиты</span>
-              <strong>{character.currentHitPoints}/{character.maxHitPoints}</strong>
-            </div>
-            <div className="compact-stats__weapon">
-              <span className="compact-stats__weapon-title">Боевой блок</span>
-              <div className="weapon-damage-lines">
-                <button
-                  type="button"
-                  className="button-reset rollable-list-button weapon-roll-button"
-                  onClick={() => registerWeaponAttackRoll('mainHand')}
-                  disabled={!equippedSlots.mainHand}
-                >
-                  Попадание • Правая рука
-                </button>
-                <button
-                  type="button"
-                  className="button-reset rollable-list-button weapon-roll-button"
-                  onClick={() => registerWeaponDamageRoll('mainHand')}
-                  disabled={!equippedSlots.mainHand}
-                >
-                  Урон • Правая: {mainHandDamage}
-                </button>
-                <button
-                  type="button"
-                  className="button-reset rollable-list-button weapon-roll-button"
-                  onClick={() => registerWeaponAttackRoll('offHand')}
-                  disabled={!equippedSlots.offHand}
-                >
-                  Попадание • Левая рука
-                </button>
-                <button
-                  type="button"
-                  className="button-reset rollable-list-button weapon-roll-button"
-                  onClick={() => registerWeaponDamageRoll('offHand')}
-                  disabled={!equippedSlots.offHand}
-                >
-                  Урон • Левая: {offHandDamage}
-                </button>
-              </div>
-            </div>
-            <div className="key-metric">
-              <span>Скорость</span>
-              <strong>{character.speed}</strong>
-            </div>
-            <div className="key-metric">
-              <span>Инициатива</span>
-              <button
-                type="button"
-                className="button-reset key-metric-action"
-                onClick={registerInitiativeRoll}
-              >
-                {initiativeModifier >= 0 ? `+${initiativeModifier}` : initiativeModifier}
-              </button>
-            </div>
-            <div className="key-metric">
-              <span>Бонус мастерства</span>
-              <strong>+{character.proficiencyBonus}</strong>
-            </div>
-            <div className="key-metric">
-              <span>Пассивная внимательность</span>
-              <strong>{character.passivePerception}</strong>
-            </div>
-          </div>
-          {canEditPage ? (
-            <div className="stack">
-              <div className="section-header-row">
-                <h4>Отдых</h4>
-                <span className="muted">Костей хитов доступно: {character.availableHitDice}</span>
-              </div>
-              <div className="form-grid compact">
-                <label>
-                  Короткий отдых: потратить костей хитов
-                  <input
-                    className="app-search-input"
-                    type="number"
-                    min={0}
-                    max={Math.max(0, character.availableHitDice)}
-                    value={shortRestHitDice}
-                    onChange={(event) => setShortRestHitDice(Math.max(0, Number(event.target.value) || 0))}
-                    disabled={isSaving}
-                  />
-                </label>
-              </div>
-              <div className="skill-pick-grid">
-                <button type="button" className="secondary-button button-reset" onClick={() => void applyRest('short')} disabled={isSaving || character.availableHitDice <= 0}>
-                  Короткий отдых
-                </button>
-                <button type="button" className="secondary-button button-reset" onClick={() => void applyRest('long')} disabled={isSaving}>
-                  Длительный отдых
-                </button>
-                <button type="button" className="primary-button button-reset" onClick={() => void applyRest('full-heal')} disabled={isSaving}>
-                  Полностью вылечить
-                </button>
-              </div>
-            </div>
-          ) : null}
-          {saveStatus ? <p className={saveStatus.includes('Не удалось') ? 'inline-error' : 'success-text'}>{saveStatus}</p> : null}
-        </article>
+        <KeyMetricsPanel
+          character={character}
+          canEdit={canEditPage}
+          equippedSlots={equippedSlots}
+          initiativeModifier={initiativeModifier}
+          mainHandDamage={mainHandDamage}
+          offHandDamage={offHandDamage}
+          shortRestHitDice={shortRestHitDice}
+          isSaving={isSaving}
+          saveStatus={saveStatus}
+          onInitiativeRoll={registerInitiativeRoll}
+          onWeaponAttackRoll={registerWeaponAttackRoll}
+          onWeaponDamageRoll={registerWeaponDamageRoll}
+          onShortRestHitDiceChange={setShortRestHitDice}
+          onRest={(restType) => void applyRest(restType)}
+        />
 
         <CharacterSkillsPanel skills={allSkills} onRoll={registerRoll} />
 
@@ -751,148 +665,47 @@ export function CharacterDetailPage() {
 
         <SpellSlotsPanel currentSlots={character.spellSlots} maxSlots={character.maxSpellSlots} />
 
-        <article className="surface-card">
-          <div className="section-header-row">
-            <h3>Известные заклинания</h3>
-            {canEditPage ? (
-              <button type="button" className="secondary-button button-reset compact-plus-button" onClick={() => setIsSpellPickerOpen(true)}>
-                +
-              </button>
-            ) : null}
-          </div>
-          <div className="skill-pick-grid">
-            {knownSpellsDraft.length > 0 ? (
-              knownSpellsDraft.map((spellKey, index) => (
-                <span key={`${spellKey}-${index}`} className={`bonus-chip static ${recentlyAddedSpell === spellKey ? 'selection-flash' : ''}`}>
-                  <button
-                    type="button"
-                    className="button-reset spell-chip-trigger"
-                    onClick={() => {
-                      const details = resolveSpellDetails(spellKey)
-                      setSpellModal(details)
-                      setSpellCastSlotLevel(Math.max(1, details.circle))
-                    }}
-                  >
-                    {knownSpellsRu[index]}
-                  </button>
-                  {canEditPage ? (
-                    <button
-                      type="button"
-                      className="button-reset icon-remove-button"
-                      aria-label="Удалить заклинание"
-                      onClick={() => removeSpell(spellKey)}
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </span>
-              ))
-            ) : <span className="muted">Нет данных</span>}
-          </div>
-          {canEditPage ? (
-            <button type="button" className="primary-button button-reset" onClick={() => void saveCharacterChanges()} disabled={isSaving}>
-              {isSaving ? 'Сохранение...' : 'Сохранить заклинания'}
-            </button>
-          ) : null}
-        </article>
+        <KnownSpellsPanel
+          spellKeys={knownSpellsDraft}
+          spellNames={knownSpellsRu}
+          recentlyAddedSpell={recentlyAddedSpell}
+          canEdit={canEditPage}
+          isSaving={isSaving}
+          onOpenPicker={() => setIsSpellPickerOpen(true)}
+          onOpenSpell={(spellKey) => {
+            const details = resolveSpellDetails(spellKey)
+            setSpellModal(details)
+            setSpellCastSlotLevel(Math.max(1, details.circle))
+          }}
+          onRemoveSpell={removeSpell}
+          onSave={() => void saveCharacterChanges()}
+        />
 
-        <article className="surface-card">
-          <div className="section-header-row">
-            <h3>Инвентарь</h3>
-            {canEditPage ? (
-              <button type="button" className="secondary-button button-reset compact-plus-button" onClick={() => setIsInventoryPickerOpen(true)}>
-                +
-              </button>
-            ) : null}
-          </div>
-          <div className="stack">
-            <div className="skill-pick-grid">
-              {inventoryWithIndexes.length > 0 ? inventoryWithIndexes.map(({ slug, index, key }) => (
-                <span key={key} className={`bonus-chip static ${recentlyAddedInventoryKey === key ? 'selection-flash' : ''}`}>
-                  {equipmentBySlug.get(slug)?.name ?? slug}
-                  {canEditPage ? (
-                    <button
-                      type="button"
-                      className="button-reset icon-remove-button"
-                      aria-label="Удалить предмет"
-                      onClick={() => removeInventoryItem(index)}
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </span>
-              )) : <span className="muted">Предметы не добавлены.</span>}
-            </div>
+        <InventoryPanel
+          items={inventoryWithIndexes}
+          equipmentBySlug={equipmentBySlug}
+          equippedSlots={equippedSlots}
+          bodyEquipOptions={bodyEquipOptions}
+          mainHandEquipOptions={mainHandEquipOptions}
+          offHandEquipOptions={offHandEquipOptions}
+          isMainHandTwoHanded={isMainHandTwoHanded}
+          recentlyAddedInventoryKey={recentlyAddedInventoryKey}
+          canEdit={canEditPage}
+          isSaving={isSaving}
+          onOpenPicker={() => setIsInventoryPickerOpen(true)}
+          onRemoveItem={removeInventoryItem}
+          onEquipItem={equipItem}
+          onSave={() => void saveCharacterChanges()}
+        />
 
-            <div className="form-grid compact">
-              <label>
-                Тело
-                <select
-                  className="app-select"
-                  value={equippedSlots.body ?? ''}
-                  onChange={(event) => equipItem('body', event.target.value)}
-                  disabled={!canEditPage}
-                >
-                  <option value="">Не экипировано</option>
-                  {bodyEquipOptions.map((slug, index) => (
-                    <option key={`${slug}-body-${index}`} value={slug}>{equipmentBySlug.get(slug)?.name ?? slug}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Правая рука
-                <select
-                  className="app-select"
-                  value={equippedSlots.mainHand ?? ''}
-                  onChange={(event) => equipItem('mainHand', event.target.value)}
-                  disabled={!canEditPage}
-                >
-                  <option value="">Не экипировано</option>
-                  {mainHandEquipOptions.map((slug, index) => (
-                    <option key={`${slug}-main-${index}`} value={slug}>{equipmentBySlug.get(slug)?.name ?? slug}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Левая рука
-                <select
-                  className="app-select"
-                  value={equippedSlots.offHand ?? ''}
-                  onChange={(event) => equipItem('offHand', event.target.value)}
-                  disabled={!canEditPage || isMainHandTwoHanded}
-                >
-                  <option value="">Не экипировано</option>
-                  {offHandEquipOptions.map((slug, index) => (
-                    <option key={`${slug}-off-${index}`} value={slug}>{equipmentBySlug.get(slug)?.name ?? slug}</option>
-                  ))}
-                </select>
-                {isMainHandTwoHanded ? <small className="muted">Левая рука занята двуручным оружием.</small> : null}
-              </label>
-            </div>
-            {canEditPage ? (
-              <button type="button" className="primary-button button-reset" onClick={() => void saveCharacterChanges()} disabled={isSaving}>
-                {isSaving ? 'Сохранение...' : 'Сохранить инвентарь'}
-              </button>
-            ) : null}
-          </div>
-        </article>
-
-        <article className="surface-card">
-          <h3>Заметки</h3>
-          {canEditPage ? (
-            <div className="stack">
-              <textarea
-                value={notesDraft}
-                onChange={(event) => setNotesDraft(event.target.value)}
-                placeholder="Добавьте заметки по персонажу..."
-                rows={6}
-              />
-              <button type="button" className="primary-button button-reset" onClick={() => void saveCharacterChanges()} disabled={isSaving}>
-                {isSaving ? 'Сохранение...' : 'Сохранить заметки'}
-              </button>
-            </div>
-          ) : <p>{character.notes || 'Пока без заметок.'}</p>}
-        </article>
+        <CharacterNotesPanel
+          notes={character.notes}
+          notesDraft={notesDraft}
+          canEdit={canEditPage}
+          isSaving={isSaving}
+          onNotesChange={setNotesDraft}
+          onSave={() => void saveCharacterChanges()}
+        />
       </section>
 
       {spellModal ? (

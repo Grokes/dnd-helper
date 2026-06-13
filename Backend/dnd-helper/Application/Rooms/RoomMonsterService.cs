@@ -8,13 +8,13 @@ public sealed class RoomMonsterService
 {
     private readonly AppDbContext dbContext;
     private readonly IRulesCatalogRepository rulesRepository;
-    private readonly DiceRoller diceRoller;
+    private readonly RoomCombatService combatService;
 
-    public RoomMonsterService(AppDbContext dbContext, IRulesCatalogRepository rulesRepository, DiceRoller diceRoller)
+    public RoomMonsterService(AppDbContext dbContext, IRulesCatalogRepository rulesRepository, RoomCombatService combatService)
     {
         this.dbContext = dbContext;
         this.rulesRepository = rulesRepository;
-        this.diceRoller = diceRoller;
+        this.combatService = combatService;
     }
 
     public async Task<RoomMonsterServiceOutcome<RoomMonsterDto>> AddMonsterAsync(
@@ -155,58 +155,23 @@ public sealed class RoomMonsterService
         }
 
         var target = targetLink.Character;
-        var targetMaxHitPoints = target.MaxHitPoints <= 0 ? target.HitPoints : target.MaxHitPoints;
+        var attackResult = combatService.AttackCharacter(combatant, target);
+        if (!attackResult.IsSuccess)
+        {
+            return RoomMonsterServiceOutcome<MonsterAttackResultDto>.Validation(attackResult.Errors!);
+        }
+
+        var computation = attackResult.Result!;
+        var targetMaxHitPoints = computation.TargetMaxHitPoints;
         if (target.MaxHitPoints <= 0)
         {
             target.CurrentHitPoints = targetMaxHitPoints;
         }
 
-        var attack = diceRoller.RollD20(combatant.AttackBonus);
-        var isHit = attack.IsNaturalTwenty || (!attack.IsNaturalOne && attack.Total >= target.ArmorClass);
-
-        var damageExpression = "—";
-        var damageDiceResult = 0;
-        var damageTotal = 0;
-        var message = $"{combatant.Name} промахивается по {target.Name}.";
-
-        if (isHit)
-        {
-            if (!diceRoller.TryRoll(combatant.DamageDice ?? "1d4", out var damageRoll))
-            {
-                return RoomMonsterServiceOutcome<MonsterAttackResultDto>.Validation(
-                    "damageDice",
-                    "Невозможно бросить урон: некорректный формат кости урона.");
-            }
-
-            damageExpression = damageRoll.Expression;
-            damageDiceResult = damageRoll.Total;
-            damageTotal = Math.Max(0, damageDiceResult + combatant.DamageBonus);
-            target.CurrentHitPoints = Math.Max(0, target.CurrentHitPoints - damageTotal);
-            message = $"{combatant.Name} попадает по {target.Name} и наносит {damageTotal} урона.";
-        }
-
+        target.CurrentHitPoints = computation.NextTargetCurrentHitPoints;
         target.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
-
-        return RoomMonsterServiceOutcome<MonsterAttackResultDto>.Success(new MonsterAttackResultDto(
-            combatant.Id,
-            combatant.Name,
-            target.Id,
-            target.Name,
-            attack.Roll,
-            combatant.AttackBonus,
-            attack.Total,
-            target.ArmorClass,
-            attack.IsNaturalTwenty,
-            isHit,
-            damageExpression,
-            damageDiceResult,
-            combatant.DamageBonus,
-            damageTotal,
-            target.CurrentHitPoints,
-            targetMaxHitPoints,
-            DateTime.UtcNow,
-            message));
+        return RoomMonsterServiceOutcome<MonsterAttackResultDto>.Success(computation.Result);
     }
 
     public async Task<RoomMonsterServiceOutcome<MonsterDamageRollDto>> RollDamageAsync(
@@ -220,23 +185,13 @@ public sealed class RoomMonsterService
             return RoomMonsterServiceOutcome<MonsterDamageRollDto>.NotFound();
         }
 
-        if (!diceRoller.TryRoll(combatant.DamageDice ?? "1d4", out var damageRoll))
+        var damageResult = combatService.RollMonsterDamage(combatant);
+        if (!damageResult.IsSuccess)
         {
-            return RoomMonsterServiceOutcome<MonsterDamageRollDto>.Validation(
-                "damageDice",
-                "Невозможно бросить урон: некорректный формат кости урона.");
+            return RoomMonsterServiceOutcome<MonsterDamageRollDto>.Validation(damageResult.Errors!);
         }
 
-        var total = Math.Max(0, damageRoll.Total + combatant.DamageBonus);
-        return RoomMonsterServiceOutcome<MonsterDamageRollDto>.Success(new MonsterDamageRollDto(
-            combatant.Id,
-            combatant.Name,
-            combatant.AttackName ?? "Атака",
-            damageRoll.Expression,
-            damageRoll.Total,
-            combatant.DamageBonus,
-            total,
-            DateTime.UtcNow));
+        return RoomMonsterServiceOutcome<MonsterDamageRollDto>.Success(damageResult.Result!);
     }
 
     public static RoomMonsterDto MapMonsterDto(EncounterCombatantEntity combatant)
@@ -280,6 +235,11 @@ public sealed record RoomMonsterServiceOutcome<T>(
     public static RoomMonsterServiceOutcome<T> Validation(string key, string message) => new(
         default,
         new Dictionary<string, string[]> { [key] = [message] },
+        false);
+
+    public static RoomMonsterServiceOutcome<T> Validation(Dictionary<string, string[]> errors) => new(
+        default,
+        errors,
         false);
 
     public static RoomMonsterServiceOutcome<T> NotFound() => new(default, null, true);

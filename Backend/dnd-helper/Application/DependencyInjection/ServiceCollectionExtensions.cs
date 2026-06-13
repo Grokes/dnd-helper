@@ -1,3 +1,4 @@
+using dnd_helper.Application.Rooms.UseCases;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace dnd_helper.Application.DependencyInjection;
@@ -15,6 +16,21 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UpdateCharacterUseCase>();
         services.AddScoped<RestCharacterUseCase>();
         services.AddScoped<CastCharacterSpellUseCase>();
+        services.AddScoped<ListRoomsUseCase>();
+        services.AddScoped<CreateRoomUseCase>();
+        services.AddScoped<GetRoomUseCase>();
+        services.AddScoped<JoinRoomUseCase>();
+        services.AddScoped<JoinRoomByInviteUseCase>();
+        services.AddScoped<SelectRoomCharacterUseCase>();
+        services.AddScoped<UpdateRoomPresenceUseCase>();
+        services.AddScoped<UpdateRoomMemberRoleUseCase>();
+        services.AddScoped<RoomCombatService>();
+        services.AddScoped<ListRoomMonstersUseCase>();
+        services.AddScoped<AddRoomMonsterUseCase>();
+        services.AddScoped<ApplyRoomMonsterDamageUseCase>();
+        services.AddScoped<DeleteRoomMonsterUseCase>();
+        services.AddScoped<AttackWithRoomMonsterUseCase>();
+        services.AddScoped<RollRoomMonsterDamageUseCase>();
         services.AddScoped<RoomAccessService>();
         services.AddScoped<RoomMonsterService>();
 

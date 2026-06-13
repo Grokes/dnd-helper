@@ -79,6 +79,7 @@ npm run build
 - [docs/data.md](docs/data.md) - PostgreSQL, MongoDB, разделение данных, seeding, сброс и пересоздание БД.
 - [docs/runbook.md](docs/runbook.md) - запуск, остановка, Docker, локальный dev, внешнее подключение и отладка.
 - [docs/testing.md](docs/testing.md) - тестовая инфраструктура и запуск проверок.
+- [docs/development-modules.md](docs/development-modules.md) - помодульное описание разработки с демонстрационными фрагментами кода.
 - [README_DB.md](README_DB.md) - короткий вход в документацию по базам данных.
 
 ## Структура репозитория

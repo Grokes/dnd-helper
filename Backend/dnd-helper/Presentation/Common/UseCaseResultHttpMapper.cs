@@ -13,6 +13,7 @@ public static class UseCaseResultHttpMapper
             UseCaseResultStatus.ValidationFailed => Results.ValidationProblem(result.Errors ?? []),
             UseCaseResultStatus.NotFound => Results.NotFound(),
             UseCaseResultStatus.Forbidden => Results.Forbid(),
+            UseCaseResultStatus.NoContent => Results.NoContent(),
             _ => Results.Problem("Unexpected use case result.")
         };
     }

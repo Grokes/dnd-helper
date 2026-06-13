@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../features/auth/model/AuthProvider'
 import {
@@ -22,7 +22,6 @@ import {
   abilityOrder,
   abilityScoreMax,
   abilityScoreMin,
-  buildInfoIconLabel,
   buildOptionOverview,
   draftStorageKey,
   extractFeatureLevel,
@@ -35,7 +34,6 @@ import {
   parseEquipFromInventory,
   splitMultiline,
   steps,
-  translateClassSlug,
   uniqueValues,
   type CharacterDraft,
   type DraftValidationErrors,
@@ -47,6 +45,18 @@ import {
   type StepKey,
 } from '../features/character-create/model/characterCreateModel'
 import { CharacterBuilderHeader } from '../widgets/character-create/ui/CharacterBuilderHeader'
+import { AbilityStepPanel } from '../widgets/character-create/ui/AbilityStepPanel'
+import { IdentityStepPanel } from '../widgets/character-create/ui/IdentityStepPanel'
+import { RaceStepPanel } from '../widgets/character-create/ui/RaceStepPanel'
+import { BackgroundStepPanel } from '../widgets/character-create/ui/BackgroundStepPanel'
+import { ClassStepPanel } from '../widgets/character-create/ui/ClassStepPanel'
+import { ReviewStepPanel } from '../widgets/character-create/ui/ReviewStepPanel'
+import { SpellsStepPanel } from '../widgets/character-create/ui/SpellsStepPanel'
+import { InventoryStepPanel } from '../widgets/character-create/ui/InventoryStepPanel'
+import { ProficiencyItemsModal } from '../widgets/character-create/ui/ProficiencyItemsModal'
+import { SpellInfoModal } from '../widgets/character-create/ui/SpellInfoModal'
+import { FeatureInfoModal } from '../widgets/character-create/ui/FeatureInfoModal'
+import { CharacterOptionInfoModal } from '../widgets/character-create/ui/CharacterOptionInfoModal'
 import {
   translateAbility,
   translateSkill,
@@ -1031,558 +1041,129 @@ export function CharacterCreatePage() {
       <section className="builder-layout compact">
         <div className="builder-main">
           {currentStep === 'identity' ? (
-            <article className="surface-card builder-section">
-              <h3>Базовая информация</h3>
-              <div className="form-grid compact">
-                <label className="full-span">
-                  Имя персонажа
-                  <input value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} />
-                </label>
-              </div>
-              {getStepErrors('identity').length > 0 ? <p className="inline-error">{getStepErrors('identity')[0]}</p> : null}
-            </article>
+            <IdentityStepPanel
+              name={draft.name}
+              errors={getStepErrors('identity')}
+              onNameChange={(value) => updateDraft('name', value)}
+            />
           ) : null}
 
           {currentStep === 'race' ? (
-            <article className="surface-card builder-section">
-              <h3>Раса</h3>
-              <div className="race-group-stack">
-                {groupedRaces.map(([group, races]) => (
-                  <section key={group} className="race-group">
-                    <div className="race-group__title">
-                      <h4>{group}</h4>
-                    </div>
-                    <div className="choice-grid compact">
-                      {races.map((race) => (
-                        <Fragment key={race.id}>
-                          <article
-                            className={`choice-card slim choice-card--static ${race.id === draft.raceId ? 'selected' : ''}`}
-                          >
-                            <button
-                              type="button"
-                              className="info-icon-button"
-                              aria-label={buildInfoIconLabel(race.name)}
-                              onClick={() => openRaceInfo(race)}
-                            >
-                              i
-                            </button>
-                            <button type="button" className="choice-card__main" onClick={() => updateDraft('raceId', race.id)}>
-                              <strong>{race.name}</strong>
-                              {race.summary && race.summary !== race.name ? <small>{race.summary}</small> : null}
-                              <small className="multiline-text">
-                                Бонусы:{'\n'}
-                                {(race.bonuses.map((bonus) => `${translateAbility(bonus.ability)} +${bonus.value}`).join('\n')) || 'нет'}
-                              </small>
-                              {race.skillChoiceRule ? (
-                                <small>Выбор навыков: {race.skillChoiceRule.count}</small>
-                              ) : null}
-                            </button>
-                          </article>
-                          {race.id === draft.raceId && race.bonusChoiceRule ? (
-                            <div className="bonus-choice-panel full-width race-skill-selection-panel">
-                              <p>{race.bonusChoiceRule.summary} (выбери: {race.bonusChoiceRule.count})</p>
-                              <div className="bonus-choice-grid">
-                                {race.bonusChoiceRule.allowedAbilities.map((ability) => (
-                                  <button
-                                    key={ability}
-                                    type="button"
-                                    className={`bonus-chip ${draft.bonusAbilitySelections.includes(ability) ? 'selected' : ''}`}
-                                    onClick={() => toggleBonusSelection(ability)}
-                                  >
-                                    {translateAbility(ability)}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-                          {race.id === draft.raceId && race.skillChoiceRule ? (
-                            <div className="bonus-choice-panel full-width race-skill-selection-panel">
-                              <p>{race.skillChoiceRule.summary} (выбери: {race.skillChoiceRule.count})</p>
-                              <div className="skill-pick-grid">
-                                {race.skillChoiceRule.availableSkills.map((skill) => (
-                                  <button
-                                    key={skill}
-                                    type="button"
-                                    className={`skill-toggle ${draft.raceSkillSelections.includes(skill) ? 'selected' : ''}`}
-                                    onClick={() => toggleRaceSkill(skill)}
-                                  >
-                                    {translateSkill(skill)}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-                        </Fragment>
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            </article>
+            <RaceStepPanel
+              raceGroups={groupedRaces}
+              selectedRaceId={draft.raceId}
+              bonusAbilitySelections={draft.bonusAbilitySelections}
+              raceSkillSelections={draft.raceSkillSelections}
+              onSelectRace={(raceId) => updateDraft('raceId', raceId)}
+              onOpenRaceInfo={openRaceInfo}
+              onToggleBonusSelection={toggleBonusSelection}
+              onToggleRaceSkill={toggleRaceSkill}
+            />
           ) : null}
 
           {currentStep === 'class' ? (
-            <article className="surface-card builder-section">
-              <h3>Класс</h3>
-              <div className="form-grid compact">
-                <label className="full-span">
-                  Уровень персонажа
-                  <input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={draft.level}
-                    onChange={(event) => updateDraft('level', Number(event.target.value))}
-                  />
-                </label>
-              </div>
-              <div className="choice-grid compact">
-                {options.classes.map((item) => (
-                  <article
-                    key={item.id}
-                    className={`choice-card slim choice-card--static ${item.id === draft.classId ? 'selected' : ''}`}
-                  >
-                    <button
-                      type="button"
-                      className="info-icon-button"
-                      aria-label={buildInfoIconLabel(item.name)}
-                      onClick={() => openClassInfo(item)}
-                    >
-                      i
-                    </button>
-                    <button type="button" className="choice-card__main" onClick={() => updateDraft('classId', item.id)}>
-                      <strong>{item.name}</strong>
-                      <small>{item.summary}</small>
-                      <small>Кость хитов d{item.hitDie}</small>
-                      <small>Спасброски: {item.savingThrowProficiencies.map((ability) => translateAbility(ability)).join(', ')}</small>
-                    </button>
-                  </article>
-                ))}
-              </div>
-              <div className="builder-subsection">
-                <h4>Владения класса</h4>
-                <div className="stack">
-                  <article className="surface-card modal-detail">
-                    <h4>Доспехи</h4>
-                    {armorDisplayItems.length > 0 ? (
-                      <div className="skill-pick-grid">
-                        {armorDisplayItems.map((entry, index) => (
-                          entry.interactive ? (
-                            <button
-                              key={`armor-${entry.label}-${index}`}
-                              type="button"
-                              className="bonus-chip"
-                              onClick={() => setProficiencyItemsModal({ title: entry.label, items: entry.items })}
-                            >
-                              {entry.label}
-                            </button>
-                          ) : <span key={`armor-${entry.label}-${index}`} className="bonus-chip static">{entry.label}</span>
-                        ))}
-                      </div>
-                    ) : <span className="muted">Нет владений доспехами.</span>}
-                  </article>
-                  <article className="surface-card modal-detail">
-                    <h4>Оружие</h4>
-                    {weaponDisplayItems.length > 0 ? (
-                      <div className="skill-pick-grid">
-                        {weaponDisplayItems.map((entry, index) => (
-                          entry.interactive ? (
-                            <button
-                              key={`weapon-${entry.label}-${index}`}
-                              type="button"
-                              className="bonus-chip"
-                              onClick={() => setProficiencyItemsModal({ title: entry.label, items: entry.items })}
-                            >
-                              {entry.label}
-                            </button>
-                          ) : <span key={`weapon-${entry.label}-${index}`} className="bonus-chip static">{entry.label}</span>
-                        ))}
-                      </div>
-                    ) : <span className="muted">Нет владений оружием.</span>}
-                  </article>
-                </div>
-              </div>
-              <div className="builder-subsection">
-                <h4>Навыки класса</h4>
-                <p className="muted">
-                  {selectedClass.skillChoiceRule.summary} (выбери: {selectedClass.skillChoiceRule.count})
-                </p>
-                <div className="skill-pick-grid">
-                  {selectedClass.skillChoiceRule.availableSkills.map((skill) => {
-                    const isBlocked = draft.raceSkillSelections.includes(skill)
-                    return (
-                      <button
-                        key={skill}
-                        type="button"
-                        className={`skill-toggle ${draft.classSkillSelections.includes(skill) ? 'selected' : ''}`}
-                        onClick={() => toggleClassSkill(skill)}
-                        disabled={isBlocked}
-                      >
-                        {translateSkill(skill)}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div className="builder-subsection">
-                <h4>Владения спасбросками</h4>
-                <div className="skill-pick-grid">
-                  {computedSavingThrows.filter((item) => item.isProficient).map((savingThrow) => (
-                    <span key={savingThrow.ability} className="bonus-chip static">
-                      {translateAbility(savingThrow.ability)}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="builder-subsection">
-                <h4>Классовые особенности по уровню</h4>
-                <div className="stack">
-                  {groupedClassFeatures.length > 0 ? groupedClassFeatures.map(([level, features]) => (
-                    <article key={`level-${level}`} className="surface-card modal-detail class-feature-level-card">
-                      <button
-                        type="button"
-                        className="disclosure-button"
-                        onClick={() =>
-                          setExpandedClassFeatureLevel((current) =>
-                            current === `class-level-${level}` ? null : `class-level-${level}`,
-                          )
-                        }
-                      >
-                        <span>{level === 0 ? 'Дополнительно' : `${level} уровень`}</span>
-                        <strong>{expandedClassFeatureLevel === `class-level-${level}` ? 'Скрыть' : 'Показать'}</strong>
-                      </button>
-                      {expandedClassFeatureLevel === `class-level-${level}` ? (
-                        <div className="skill-pick-grid">
-                          {features.map((feature) => (
-                            <button
-                              key={`${level}-${feature}`}
-                              type="button"
-                              className="bonus-chip"
-                              onClick={() => {
-                                const full = availableClassFeatures.find((item) =>
-                                  item.title.toLowerCase().includes(feature.toLowerCase()),
-                                )
-                                setFeatureInfoModal({
-                                  title: feature,
-                                  description: full?.description ?? 'Описание будет уточнено.',
-                                })
-                              }}
-                            >
-                              {feature}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </article>
-                  )) : <span className="muted">Для этого уровня пока нет отображаемых особенностей.</span>}
-                </div>
-              </div>
-            </article>
+            <ClassStepPanel
+              classes={options.classes}
+              selectedClass={selectedClass}
+              selectedClassId={draft.classId}
+              level={draft.level}
+              armorDisplayItems={armorDisplayItems}
+              weaponDisplayItems={weaponDisplayItems}
+              classSkillSelections={draft.classSkillSelections}
+              raceSkillSelections={draft.raceSkillSelections}
+              savingThrows={computedSavingThrows}
+              groupedClassFeatures={groupedClassFeatures}
+              expandedClassFeatureLevel={expandedClassFeatureLevel}
+              availableClassFeatures={availableClassFeatures}
+              onLevelChange={(level) => updateDraft('level', level)}
+              onSelectClass={(classId) => updateDraft('classId', classId)}
+              onOpenClassInfo={openClassInfo}
+              onOpenProficiencyItems={(title, items) => setProficiencyItemsModal({ title, items })}
+              onToggleClassSkill={toggleClassSkill}
+              onToggleFeatureLevel={(featureLevel) =>
+                setExpandedClassFeatureLevel((current) =>
+                  current === `class-level-${featureLevel}` ? null : `class-level-${featureLevel}`,
+                )
+              }
+              onOpenFeatureInfo={(title, description) => setFeatureInfoModal({ title, description })}
+            />
           ) : null}
 
           {currentStep === 'background' ? (
-            <article className="surface-card builder-section">
-              <h3>Предыстория</h3>
-              <div className="choice-grid compact">
-                {options.backgrounds.map((item) => (
-                  <article
-                    key={item.id}
-                    className={`choice-card slim choice-card--static ${item.id === draft.backgroundId ? 'selected' : ''}`}
-                  >
-                    <button
-                      type="button"
-                      className="info-icon-button"
-                      aria-label={buildInfoIconLabel(item.name)}
-                      onClick={() => openBackgroundInfo(item)}
-                    >
-                      i
-                    </button>
-                    <button
-                      type="button"
-                      className="choice-card__main"
-                      onClick={() => updateDraft('backgroundId', item.id)}
-                    >
-                      <strong>{item.name}</strong>
-                      <small>{item.summary}</small>
-                      <small>{item.description ?? item.summary}</small>
-                      <small>Навыки: {item.grantedSkillProficiencies.map((skill) => translateSkill(skill)).join(', ')}</small>
-                    </button>
-                  </article>
-                ))}
-              </div>
-              {getStepErrors('background').length > 0 ? <p className="inline-error">{getStepErrors('background')[0]}</p> : null}
-            </article>
+            <BackgroundStepPanel
+              backgrounds={options.backgrounds}
+              selectedBackgroundId={draft.backgroundId}
+              errors={getStepErrors('background')}
+              onSelectBackground={(backgroundId) => updateDraft('backgroundId', backgroundId)}
+              onOpenBackgroundInfo={openBackgroundInfo}
+            />
           ) : null}
 
           {currentStep === 'abilities' ? (
-            <article className="surface-card builder-section">
-              <h3>Характеристики</h3>
-              <p className="muted">Каждую базовую характеристику можно задать вручную в пределах от 3 до 18. Расовые бонусы применяются автоматически и сразу видны в расчёте.</p>
-              <button type="button" className="secondary-button button-reset ability-random-button" onClick={randomizeBaseAbilities}>
-                Случайно распределить характеристики
-              </button>
-              <div className="ability-builder-grid compact">
-                {computedAbilities.map((ability) => (
-                  <article className="ability-builder-card compact" key={ability.key}>
-                    <div>
-                      <p className="ability-key">{translateAbility(ability.key)}</p>
-                      <h4>{translateAbility(ability.key)}</h4>
-                    </div>
-                    <label>
-                      Базовое значение
-                      <div className="ability-stepper">
-                        <button
-                          type="button"
-                          className="stepper-button"
-                          onClick={() => updateBaseAbility(ability.key, ability.baseScore - 1)}
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min={abilityScoreMin}
-                          max={abilityScoreMax}
-                          value={ability.baseScore}
-                          onChange={(event) => updateBaseAbility(ability.key, Number(event.target.value))}
-                        />
-                        <button
-                          type="button"
-                          className="stepper-button"
-                          onClick={() => updateBaseAbility(ability.key, ability.baseScore + 1)}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </label>
-                    <div className="ability-breakdown compact">
-                      <div>
-                        <span>Расовый бонус</span>
-                        <strong>{ability.bonus >= 0 ? `+${ability.bonus}` : ability.bonus}</strong>
-                      </div>
-                      <div>
-                        <span>Итог</span>
-                        <strong>{ability.total}</strong>
-                      </div>
-                      <div>
-                        <span>Модификатор</span>
-                        <strong>{ability.modifier >= 0 ? `+${ability.modifier}` : ability.modifier}</strong>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-              {getStepErrors('abilities').length > 0 ? <p className="inline-error">{getStepErrors('abilities')[0]}</p> : null}
-            </article>
+            <AbilityStepPanel
+              abilities={computedAbilities}
+              minScore={abilityScoreMin}
+              maxScore={abilityScoreMax}
+              errors={getStepErrors('abilities')}
+              onRandomize={randomizeBaseAbilities}
+              onUpdateBaseAbility={updateBaseAbility}
+            />
           ) : null}
 
           
 
           {currentStep === 'spells' ? (
-            <article className="surface-card builder-section">
-              <h3>Заклинания</h3>
-              <label className="full-span">
-                Заклинания
-                <div className="skill-pick-grid">
-                  <button type="button" className="secondary-button button-reset" onClick={() => setIsSpellPickerOpen((current) => !current)}>
-                    + Добавить заклинание
-                  </button>
-                </div>
-                {isSpellPickerOpen ? (
-                  <div className="surface-card">
-                    <label className="full-span">
-                      Поиск заклинания
-                      <input
-                        className="app-search-input spell-search-input"
-                        value={spellSearch}
-                        onChange={(event) => setSpellSearch(event.target.value)}
-                        placeholder="Щит, Огненный шар..."
-                      />
-                    </label>
-                    <div className="stack">
-                      {availableSpells.map((spell) => (
-                        <article
-                          key={spell.slug}
-                          className={`choice-card slim choice-card--static ${selectedSpells.includes(spell.slug) ? 'selected' : ''}`}
-                        >
-                          <button
-                            type="button"
-                            className="info-icon-button"
-                            aria-label={buildInfoIconLabel(spell.name)}
-                            onClick={() =>
-                              setSpellInfoModal({
-                                name: spell.name,
-                                circle: spell.spellLevel ?? 0,
-                                minLevel: spell.minCharacterLevel ?? 1,
-                                classes: (spell.classSlugs ?? []).map(translateClassSlug),
-                                summary: spell.summary,
-                                description: spell.description,
-                              })
-                            }
-                          >
-                            i
-                          </button>
-                          <button
-                            type="button"
-                            className={`choice-card__main ${recentlyAddedSpell === spell.slug ? 'selection-flash' : ''}`}
-                            onClick={() => addSpell(spell.slug)}
-                          >
-                            <strong>{spell.name}</strong>
-                            <small>Круг {spell.spellLevel ?? 0} • мин. уровень {spell.minCharacterLevel ?? 1}</small>
-                            {spell.summary ? <small>{spell.summary}</small> : null}
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <div className="skill-pick-grid">
-                  {selectedSpells.length > 0 ? selectedSpells.map((spell) => (
-                    <span key={spell} className="bonus-chip static">
-                      {spellCatalog.find((item) => item.slug === spell)?.name ?? spell}
-                      <button
-                        type="button"
-                        className="button-reset icon-remove-button"
-                        aria-label="Удалить заклинание"
-                        onClick={() => removeSpell(spell)}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )) : <span className="muted">Заклинания пока не выбраны.</span>}
-                </div>
-              </label>
-            </article>
+            <SpellsStepPanel
+              availableSpells={availableSpells}
+              selectedSpells={selectedSpells}
+              spellCatalog={spellCatalog}
+              spellSearch={spellSearch}
+              isSpellPickerOpen={isSpellPickerOpen}
+              recentlyAddedSpell={recentlyAddedSpell}
+              onTogglePicker={() => setIsSpellPickerOpen((current) => !current)}
+              onSearchChange={setSpellSearch}
+              onAddSpell={addSpell}
+              onRemoveSpell={removeSpell}
+              onOpenSpellInfo={setSpellInfoModal}
+            />
           ) : null}
 
           {currentStep === 'inventory' ? (
-            <article className="surface-card builder-section">
-              <h3>Инвентарь</h3>
-              <div className="form-grid compact">
-                <label className="full-span">
-                  Предметы
-                  <div className="skill-pick-grid">
-                    <button type="button" className="secondary-button button-reset" onClick={() => setIsInventoryPickerOpen((current) => !current)}>
-                      + Добавить предмет
-                    </button>
-                  </div>
-                  {isInventoryPickerOpen ? (
-                    <div className="surface-card">
-                      <label className="full-span">
-                        Поиск предмета
-                        <input
-                          className="app-search-input"
-                          value={inventorySearch}
-                          onChange={(event) => setInventorySearch(event.target.value)}
-                          placeholder="Лук, щит, фонарь..."
-                        />
-                      </label>
-                      <div className="skill-pick-grid">
-                        {filteredEquipmentCatalog.map((item) => (
-                          <button
-                            key={item.slug}
-                            type="button"
-                            className={`skill-toggle ${recentlyAddedInventorySlug === item.slug ? 'selected selection-flash' : ''}`}
-                            onClick={() => addInventoryItem(item.slug)}
-                          >
-                            {item.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="skill-pick-grid">
-                    {inventoryWithIndexes.length === 0 ? <span className="muted">Предметы пока не добавлены.</span> : inventoryWithIndexes.map(({ slug, index, key }) => (
-                      <span key={key} className={`bonus-chip static ${recentlyAddedInventoryKey === key ? 'selection-flash' : ''}`}>
-                        {equipmentMap.get(slug)?.name ?? slug}
-                        <button
-                          type="button"
-                          className="button-reset icon-remove-button"
-                          aria-label="Удалить предмет"
-                          onClick={() => removeInventoryItem(index)}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </label>
-
-                <label className="full-span">
-                  Экипировка
-                  <div className="form-grid compact">
-                    <label>
-                      Тело
-                      <select className="app-select" value={equippedSlots.body ?? ''} onChange={(event) => equipItem('body', event.target.value)}>
-                        <option value="">Не экипировано</option>
-                        {bodyEquipOptions.map((slug, index) => <option key={`${slug}-body-${index}`} value={slug}>{equipmentMap.get(slug)?.name}</option>)}
-                      </select>
-                    </label>
-                    <label>
-                      Правая рука
-                      <select className="app-select" value={equippedSlots.mainHand ?? ''} onChange={(event) => equipItem('mainHand', event.target.value)}>
-                        <option value="">Не экипировано</option>
-                        {mainHandEquipOptions.map((slug, index) => <option key={`${slug}-main-${index}`} value={slug}>{equipmentMap.get(slug)?.name}</option>)}
-                      </select>
-                    </label>
-                    <label>
-                      Левая рука
-                      <select
-                        className="app-select"
-                        value={equippedSlots.offHand ?? ''}
-                        onChange={(event) => equipItem('offHand', event.target.value)}
-                        disabled={isMainHandTwoHanded}
-                      >
-                        <option value="">Не экипировано</option>
-                        {offHandEquipOptions.map((slug, index) => <option key={`${slug}-off-${index}`} value={slug}>{equipmentMap.get(slug)?.name}</option>)}
-                      </select>
-                      {isMainHandTwoHanded ? <small className="muted">Левая рука заблокирована двуручным оружием.</small> : null}
-                    </label>
-                  </div>
-                </label>
-              </div>
-            </article>
+            <InventoryStepPanel
+              filteredEquipmentCatalog={filteredEquipmentCatalog}
+              equipmentMap={equipmentMap}
+              inventoryWithIndexes={inventoryWithIndexes}
+              inventorySearch={inventorySearch}
+              isInventoryPickerOpen={isInventoryPickerOpen}
+              recentlyAddedInventorySlug={recentlyAddedInventorySlug}
+              recentlyAddedInventoryKey={recentlyAddedInventoryKey}
+              equippedSlots={equippedSlots}
+              bodyEquipOptions={bodyEquipOptions}
+              mainHandEquipOptions={mainHandEquipOptions}
+              offHandEquipOptions={offHandEquipOptions}
+              isMainHandTwoHanded={isMainHandTwoHanded}
+              onTogglePicker={() => setIsInventoryPickerOpen((current) => !current)}
+              onSearchChange={setInventorySearch}
+              onAddInventoryItem={addInventoryItem}
+              onRemoveInventoryItem={removeInventoryItem}
+              onEquipItem={equipItem}
+            />
           ) : null}
 
           {currentStep === 'review' ? (
-            <article className="surface-card builder-section">
-              <h3>Проверка и завершение</h3>
-              <p className="muted">Итоговый лист персонажа с применёнными бонусами и выбранными владениями.</p>
-              <div className="review-sheet review-sheet--vertical">
-                <div className="review-head">
-                  <div className="review-field"><span>Имя</span><strong>{draft.name || '—'}</strong></div>
-                  <div className="review-field"><span>Предыстория</span><strong>{selectedBackground.name}</strong></div>
-                  <div className="review-field"><span>Раса</span><strong>{selectedRace.name}</strong></div>
-                  <div className="review-field"><span>Класс</span><strong>{selectedClass.name}</strong></div>
-                  <div className="review-field"><span>Уровень</span><strong>{draft.level}</strong></div>
-                </div>
-                <div className="status-grid compact">
-                  <div className="status-card"><span>КД</span><strong>{estimatedArmorClass}</strong></div>
-                  <div className="status-card"><span>Хиты</span><strong>{estimatedHitPoints}</strong></div>
-                  <div className="status-card"><span>Скорость</span><strong>{selectedRace.speed}</strong></div>
-                  <div className="status-card"><span>Пассивная внимательность</span><strong>{passivePerception}</strong></div>
-                </div>
-                <div className="review-abilities">
-                  {computedAbilities.map((ability) => (
-                    <div key={ability.key} className="review-ability">
-                      <span>{translateAbility(ability.key)}</span>
-                      <strong>{ability.total}</strong>
-                      <small>{ability.modifier >= 0 ? `+${ability.modifier}` : ability.modifier}</small>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="builder-subsection">
-                <h4>Все навыки</h4>
-                <div className="skill-pick-grid">
-                  {allSkillsPreview.map((skill) => (
-                    <span key={skill.skillId} className={`bonus-chip ${skill.proficient ? 'selected' : 'static'}`}>
-                      {skill.label} {skill.level >= 0 ? `+${skill.level}` : skill.level}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {error ? <p className="inline-error">{error}</p> : null}
-            </article>
+            <ReviewStepPanel
+              name={draft.name}
+              level={draft.level}
+              selectedRace={selectedRace}
+              selectedClass={selectedClass}
+              selectedBackground={selectedBackground}
+              estimatedArmorClass={estimatedArmorClass}
+              estimatedHitPoints={estimatedHitPoints}
+              passivePerception={passivePerception}
+              abilities={computedAbilities}
+              skills={allSkillsPreview}
+              error={error}
+            />
           ) : null}
 
           <div className="wizard-actions">
@@ -1626,201 +1207,19 @@ export function CharacterCreatePage() {
         
       </section>
 
-      {infoModal ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setInfoModal(null)}>
-          <div className="modal-card" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>{infoModal.title}</h3>
-                <p className="section-text">{infoModal.subtitle}</p>
-              </div>
-              <button type="button" className="secondary-button button-reset" onClick={() => setInfoModal(null)}>
-                Закрыть
-              </button>
-            </div>
-
-            <div className="wizard-steps" aria-label="Разделы описания">
-              <button type="button" className={`wizard-step button-reset ${modalTab === 'overview' ? 'active' : ''}`} onClick={() => setModalTab('overview')}>
-                Обзор
-              </button>
-              <button type="button" className={`wizard-step button-reset ${modalTab === 'features' ? 'active' : ''}`} onClick={() => setModalTab('features')}>
-                Особенности
-              </button>
-              <button type="button" className={`wizard-step button-reset ${modalTab === 'proficiencies' ? 'active' : ''}`} onClick={() => setModalTab('proficiencies')}>
-                Владения
-              </button>
-            </div>
-
-            {modalTab === 'overview' ? (
-              <div className="modal-facts">
-                {infoModal.overview.map((fact) => (
-                  <div key={fact.label} className="status-card">
-                    <span>{fact.label}</span>
-                    <strong>{fact.value}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {modalTab === 'features' ? (
-              (() => {
-                const classFeatureGroups = infoModal.features.reduce((acc, detail) => {
-                  const match = detail.title.match(/(\d+)\s*уровень\s*:\s*(.+)/i)
-                  if (!match) {
-                    return acc
-                  }
-                  const level = Number(match[1])
-                  const featureName = match[2].trim()
-                  const list = acc.get(level) ?? []
-                  if (!list.some((item) => item.title === featureName)) {
-                    list.push({ title: featureName, description: detail.description })
-                  }
-                  acc.set(level, list)
-                  return acc
-                }, new Map<number, Array<{ title: string; description: string }>>())
-
-                if (classFeatureGroups.size > 0) {
-                  const levels = Array.from(classFeatureGroups.keys()).sort((a, b) => a - b)
-                  const activeLevel = selectedModalFeatureLevel ?? levels[0]
-                  const features = classFeatureGroups.get(activeLevel) ?? []
-                  return (
-                    <div className="stack">
-                      <div className="skill-pick-grid">
-                        {levels.map((level) => (
-                          <button
-                            key={level}
-                            type="button"
-                            className={`bonus-chip ${activeLevel === level ? 'selected' : ''}`}
-                            onClick={() => setSelectedModalFeatureLevel(level)}
-                          >
-                            {level} уровень
-                          </button>
-                        ))}
-                      </div>
-                      <div className="stack">
-                        {features.map((detail) => (
-                          <div key={`${activeLevel}-${detail.title}`} className="surface-card modal-detail">
-                            <button
-                              type="button"
-                              className="disclosure-button"
-                              onClick={() =>
-                                setExpandedModalFeature((current) => (current === `${activeLevel}-${detail.title}` ? null : `${activeLevel}-${detail.title}`))
-                              }
-                            >
-                              <span>{detail.title}</span>
-                              <strong>i</strong>
-                            </button>
-                            {expandedModalFeature === `${activeLevel}-${detail.title}` ? <p>{detail.description}</p> : null}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                }
-
-                return (
-                  <div className="stack">
-                    {infoModal.features.map((detail) => (
-                      <div key={detail.title} className="surface-card modal-detail">
-                        <button
-                          type="button"
-                          className="disclosure-button"
-                          onClick={() =>
-                            setExpandedModalFeature((current) => (current === detail.title ? null : detail.title))
-                          }
-                        >
-                          <span>{detail.title}</span>
-                          <strong>i</strong>
-                        </button>
-                        {expandedModalFeature === detail.title ? <p>{detail.description}</p> : null}
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()
-            ) : null}
-
-            {modalTab === 'proficiencies' ? (
-              <div className="stack">
-                {infoModal.proficiencies.length > 0 ? infoModal.proficiencies.map((entry) => (
-                  <div key={entry.category} className="surface-card modal-detail">
-                    <h4>{entry.category}</h4>
-                    <div className="skill-pick-grid">
-                      {entry.items.length > 0 ? entry.items.map((item) => (
-                        <span key={item} className="bonus-chip static">{item}</span>
-                      )) : <span className="muted">Нет обязательных навыков для этого класса.</span>}
-                    </div>
-                  </div>
-                )) : (
-                  <p className="muted">Нет отдельных владений в этом разделе.</p>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {proficiencyItemsModal ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setProficiencyItemsModal(null)}>
-          <div className="modal-card" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>{proficiencyItemsModal.title}</h3>
-                <p className="section-text">Список предметов по выбранному типу владения</p>
-              </div>
-              <button type="button" className="secondary-button button-reset" onClick={() => setProficiencyItemsModal(null)}>
-                Закрыть
-              </button>
-            </div>
-            <div className="skill-pick-grid">
-              {proficiencyItemsModal.items.length > 0
-                ? proficiencyItemsModal.items.map((item) => <span key={item} className="bonus-chip static">{item}</span>)
-                : <p className="muted">Список предметов пока не заполнен.</p>}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {spellInfoModal ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setSpellInfoModal(null)}>
-          <div className="modal-card spell-modal-card" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>{spellInfoModal.name}</h3>
-                <p className="section-text">{spellInfoModal.summary ?? 'Описание из Книги игрока'}</p>
-              </div>
-              <button type="button" className="secondary-button button-reset" onClick={() => setSpellInfoModal(null)}>
-                Закрыть
-              </button>
-            </div>
-            <div className="spell-meta-grid">
-              <div className="status-card"><span>Круг</span><strong>{spellInfoModal.circle}</strong></div>
-              <div className="status-card"><span>Мин. уровень</span><strong>{spellInfoModal.minLevel}</strong></div>
-              <div className="status-card"><span>Классы</span><strong>{spellInfoModal.classes.join(', ') || '-'}</strong></div>
-            </div>
-            <article className="surface-card spell-description-block">
-              <h4>Эффект заклинания</h4>
-              <p>{spellInfoModal.description ?? 'Подробное описание пока не заполнено в базе правил.'}</p>
-            </article>
-          </div>
-        </div>
-      ) : null}
-
-      {featureInfoModal ? (
-        <div className="modal-overlay" role="presentation" onClick={() => setFeatureInfoModal(null)}>
-          <div className="modal-card" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <h3>{featureInfoModal.title}</h3>
-                <p className="section-text">{featureInfoModal.description}</p>
-              </div>
-              <button type="button" className="secondary-button button-reset" onClick={() => setFeatureInfoModal(null)}>
-                Закрыть
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <CharacterOptionInfoModal
+        modal={infoModal}
+        activeTab={modalTab}
+        expandedFeature={expandedModalFeature}
+        selectedFeatureLevel={selectedModalFeatureLevel}
+        onClose={() => setInfoModal(null)}
+        onTabChange={setModalTab}
+        onExpandedFeatureChange={setExpandedModalFeature}
+        onSelectedFeatureLevelChange={setSelectedModalFeatureLevel}
+      />
+      <ProficiencyItemsModal modal={proficiencyItemsModal} onClose={() => setProficiencyItemsModal(null)} />
+      <SpellInfoModal modal={spellInfoModal} onClose={() => setSpellInfoModal(null)} />
+      <FeatureInfoModal modal={featureInfoModal} onClose={() => setFeatureInfoModal(null)} />
     </div>
   )
 }

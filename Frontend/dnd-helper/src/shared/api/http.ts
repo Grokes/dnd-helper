@@ -21,12 +21,12 @@ export async function parseApiError(response: Response): Promise<ApiValidationEr
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
+    ...init,
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
-    ...init,
   })
 
   if (!response.ok) {

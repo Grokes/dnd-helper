@@ -6,7 +6,8 @@ public enum UseCaseResultStatus
     Created,
     ValidationFailed,
     NotFound,
-    Forbidden
+    Forbidden,
+    NoContent
 }
 
 public sealed record UseCaseResult<T>(
@@ -25,4 +26,6 @@ public sealed record UseCaseResult<T>(
     public static UseCaseResult<T> NotFound() => new(UseCaseResultStatus.NotFound);
 
     public static UseCaseResult<T> Forbidden() => new(UseCaseResultStatus.Forbidden);
+
+    public static UseCaseResult<T> NoContent() => new(UseCaseResultStatus.NoContent);
 }

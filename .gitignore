@@ -81,6 +81,7 @@ dist/
 dist-ssr/
 .vite/
 .cache/
+.test-dist/
 
 # Logs
 logs/
