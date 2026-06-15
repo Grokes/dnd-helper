@@ -5,6 +5,8 @@ import {
   applyRoomMonsterDamage,
   attackRoomCharacterByMonster,
   createRoom,
+  endRoomCombat,
+  finishRoomTurn,
   getRoomById,
   getRoomMonsters,
   getRooms,
@@ -13,6 +15,7 @@ import {
   removeRoomMonster,
   rollRoomMonsterDamage,
   selectRoomCharacter,
+  startRoomCombat,
   updateRoomMemberRole,
   updateRoomPresence,
 } from './roomsApi'
@@ -83,6 +86,28 @@ test('rooms api maps monster list endpoint', async () => {
 
     assert.equal(calls[0].path, '/api/rooms/room-1/monsters')
     assert.equal(calls[0].init.method, undefined)
+  } finally {
+    restore()
+  }
+})
+
+test('rooms api maps combat initiative endpoints', async () => {
+  const { restore, calls } = mockFetchSequence([
+    jsonResponse({ id: 'room-1' }),
+    jsonResponse({ id: 'room-1' }),
+    jsonResponse({ id: 'room-1' }),
+  ])
+
+  try {
+    await startRoomCombat('room-1')
+    await finishRoomTurn('room-1')
+    await endRoomCombat('room-1')
+
+    assert.deepEqual(calls.map((call) => [call.path, call.init.method]), [
+      ['/api/rooms/room-1/combat/start', 'POST'],
+      ['/api/rooms/room-1/combat/turn/end', 'POST'],
+      ['/api/rooms/room-1/combat/end', 'POST'],
+    ])
   } finally {
     restore()
   }

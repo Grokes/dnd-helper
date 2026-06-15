@@ -308,7 +308,6 @@ export type RoomMember = {
   isOnline: boolean
   joinedAtUtc: string
   characters: RoomMemberCharacter[]
-  inventory: string[]
 }
 
 export type RoomSummary = {
@@ -333,6 +332,7 @@ export type Room = {
   canManageMembers: boolean
   connectedMembers: number
   members: RoomMember[]
+  combat: RoomCombatState
 }
 
 export type RoomMonster = {
@@ -348,6 +348,28 @@ export type RoomMonster = {
   damageDice: string
   damageBonus: number
   damageType: string
+}
+
+export type RoomTurnCombatant = {
+  id: string
+  type: 'Character' | 'Monster' | string
+  characterId?: string | null
+  monsterId?: string | null
+  name: string
+  initiative: number
+  armorClass: number
+  maxHitPoints: number
+  currentHitPoints: number
+  ownerUserId?: string | null
+  isCurrentTurn: boolean
+}
+
+export type RoomCombatState = {
+  isActive: boolean
+  roundNumber: number
+  currentCombatantId?: string | null
+  currentCombatant?: RoomTurnCombatant | null
+  turnOrder: RoomTurnCombatant[]
 }
 
 export type MonsterDamageRoll = {

@@ -14,6 +14,26 @@ public sealed record AddRoomMonsterRequest(string MonsterSlug);
 public sealed record ApplyMonsterDamageRequest(int Damage);
 public sealed record MonsterAttackRequest(Guid TargetCharacterId);
 
+public sealed record RoomTurnCombatantDto(
+    Guid Id,
+    string Type,
+    Guid? CharacterId,
+    Guid? MonsterId,
+    string Name,
+    int Initiative,
+    int ArmorClass,
+    int MaxHitPoints,
+    int CurrentHitPoints,
+    string? OwnerUserId,
+    bool IsCurrentTurn);
+
+public sealed record RoomCombatStateDto(
+    bool IsActive,
+    int RoundNumber,
+    Guid? CurrentCombatantId,
+    RoomTurnCombatantDto? CurrentCombatant,
+    List<RoomTurnCombatantDto> TurnOrder);
+
 public sealed record RoomSummaryDto(
     Guid Id,
     string Name,
@@ -42,8 +62,7 @@ public sealed record RoomMemberDto(
     bool IsOwner,
     bool IsOnline,
     DateTime JoinedAtUtc,
-    List<RoomMemberCharacterDto> Characters,
-    List<string> Inventory);
+    List<RoomMemberCharacterDto> Characters);
 
 public sealed record RoomDto(
     Guid Id,
@@ -54,7 +73,8 @@ public sealed record RoomDto(
     string CurrentUserRole,
     bool CanManageMembers,
     int ConnectedMembers,
-    List<RoomMemberDto> Members);
+    List<RoomMemberDto> Members,
+    RoomCombatStateDto Combat);
 
 public sealed record RoomMonsterDto(
     Guid Id,

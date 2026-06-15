@@ -10,6 +10,8 @@ internal static class RoomUseCaseQueries
         return query
             .Include(room => room.OwnerUser)
             .Include(room => room.Members).ThenInclude(member => member.User)
-            .Include(room => room.Members).ThenInclude(member => member.Characters).ThenInclude(link => link.Character);
+            .Include(room => room.Members).ThenInclude(member => member.Characters).ThenInclude(link => link.Character)
+            .Include(room => room.Members).ThenInclude(member => member.Characters).ThenInclude(link => link.Character).ThenInclude(character => character!.Abilities)
+            .Include(room => room.Encounters).ThenInclude(encounter => encounter.Combatants);
     }
 }

@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace dnd_helper.Domain.Rooms;
 
 public static class RoomMemberRoles
@@ -10,7 +8,6 @@ public static class RoomMemberRoles
 
 public sealed class RoomEntity
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string JoinCode { get; set; } = string.Empty;
@@ -19,6 +16,7 @@ public sealed class RoomEntity
     public ApplicationUser? OwnerUser { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public List<RoomMembershipEntity> Members { get; set; } = [];
+    public List<EncounterEntity> Encounters { get; set; } = [];
 
     public RoomSummaryDto ToSummaryDto(string currentUserId)
     {
@@ -70,9 +68,9 @@ public sealed class RoomEntity
                             characterLink.Character.CurrentHitPoints <= 0
                                 ? (characterLink.Character.MaxHitPoints <= 0 ? characterLink.Character.HitPoints : characterLink.Character.MaxHitPoints)
                                 : characterLink.Character.CurrentHitPoints))
-                        .ToList(),
-                    DeserializeInventory(member.InventoryJson)))
-                .ToList());
+                        .ToList()))
+                .ToList(),
+            BuildCombatState());
     }
 
     private static bool IsMemberOnline(RoomMembershipEntity member)
@@ -85,9 +83,56 @@ public sealed class RoomEntity
         return member.LastSeenAtUtc.Value >= DateTime.UtcNow.AddMinutes(-2);
     }
 
-    private static List<string> DeserializeInventory(string source)
+    private RoomCombatStateDto BuildCombatState()
     {
-        return JsonSerializer.Deserialize<List<string>>(source, JsonOptions) ?? [];
+        var encounter = Encounters
+            .OrderByDescending(item => item.IsCombatActive)
+            .ThenByDescending(item => item.CreatedAtUtc)
+            .FirstOrDefault();
+
+        if (encounter is null)
+        {
+            return new RoomCombatStateDto(false, 0, null, null, []);
+        }
+
+        var characterOwners = Members
+            .SelectMany(member => member.Characters.Select(link => new { link.CharacterId, member.UserId }))
+            .GroupBy(item => item.CharacterId)
+            .ToDictionary(group => group.Key, group => group.First().UserId);
+
+        var turnOrder = encounter.Combatants
+            .Where(combatant => combatant.CurrentHitPoints > 0)
+            .DistinctBy(combatant => combatant.Id)
+            .OrderByDescending(combatant => combatant.Initiative)
+            .ThenByDescending(combatant => combatant.IsPlayerCharacter)
+            .ThenBy(combatant => combatant.Name)
+            .Select(combatant =>
+            {
+                var ownerUserId = combatant.CharacterId is { } characterId && characterOwners.TryGetValue(characterId, out var userId)
+                    ? userId
+                    : null;
+                return new RoomTurnCombatantDto(
+                    combatant.Id,
+                    combatant.IsPlayerCharacter ? "Character" : "Monster",
+                    combatant.CharacterId,
+                    combatant.IsPlayerCharacter ? null : combatant.Id,
+                    combatant.Name,
+                    combatant.Initiative,
+                    combatant.ArmorClass,
+                    combatant.MaxHitPoints,
+                    combatant.CurrentHitPoints,
+                    ownerUserId,
+                    encounter.CurrentTurnCombatantId == combatant.Id);
+            })
+            .ToList();
+
+        var currentCombatant = turnOrder.FirstOrDefault(item => item.IsCurrentTurn);
+        return new RoomCombatStateDto(
+            encounter.IsCombatActive,
+            encounter.IsCombatActive ? Math.Max(1, encounter.RoundNumber) : 0,
+            encounter.CurrentTurnCombatantId,
+            currentCombatant,
+            encounter.IsCombatActive ? turnOrder : []);
     }
 }
 
@@ -99,7 +144,6 @@ public sealed class RoomMembershipEntity
     public ApplicationUser? User { get; set; }
     public List<RoomMembershipCharacterEntity> Characters { get; set; } = [];
     public string Role { get; set; } = RoomMemberRoles.Player;
-    public string InventoryJson { get; set; } = "[]";
     public DateTime JoinedAtUtc { get; set; }
     public DateTime? LastSeenAtUtc { get; set; }
 }

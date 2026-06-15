@@ -56,6 +56,40 @@ public sealed class CharacterSpellServiceTests
     }
 
     [Fact]
+    public async Task CastAsync_UsesNormalizedSpellRowsWhenTheyAreLoaded()
+    {
+        var character = CreateCharacter(
+            knownSpells: [],
+            slots: []);
+        character.KnownSpells.Add(new CharacterKnownSpellEntity
+        {
+            CharacterId = character.Id,
+            Character = character,
+            SpellSlug = "burning-hands"
+        });
+        character.SpellSlots.Add(new CharacterSpellSlotEntity
+        {
+            CharacterId = character.Id,
+            Character = character,
+            SpellLevel = 1,
+            MaxSlots = 2,
+            SpentSlots = 0
+        });
+        var service = CreateService(
+            [CreateSpell("burning-hands", "Огненные ладони", 1)],
+            rolls: [1, 1, 1]);
+
+        var outcome = await service.CastAsync(character, new CharacterCastSpellRequest("burning-hands", null), CancellationToken.None);
+
+        Assert.True(outcome.IsSuccess);
+        Assert.Equal(1, character.SpellSlots.Single().SpentSlots);
+        Assert.Equal(1, outcome.Result!.SpellSlots.Single(slot => slot.SpellLevel == 1).Slots);
+
+        var spentSlots = JsonSerializer.Deserialize<Dictionary<int, int>>(character.SpentSpellSlotsJson, JsonOptions);
+        Assert.Equal(1, spentSlots?[1]);
+    }
+
+    [Fact]
     public async Task CastAsync_RejectsSpellThatCharacterDoesNotKnow()
     {
         var character = CreateCharacter(

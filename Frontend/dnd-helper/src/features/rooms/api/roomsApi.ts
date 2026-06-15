@@ -62,6 +62,24 @@ export function updateRoomMemberRole(id: string, memberUserId: string, payload: 
   })
 }
 
+export function startRoomCombat(id: string) {
+  return apiRequest<Room>(`/api/rooms/${id}/combat/start`, {
+    method: 'POST',
+  })
+}
+
+export function endRoomCombat(id: string) {
+  return apiRequest<Room>(`/api/rooms/${id}/combat/end`, {
+    method: 'POST',
+  })
+}
+
+export function finishRoomTurn(id: string) {
+  return apiRequest<Room>(`/api/rooms/${id}/combat/turn/end`, {
+    method: 'POST',
+  })
+}
+
 export function getRoomMonsters(id: string) {
   return apiRequest<RoomMonster[]>(`/api/rooms/${id}/monsters`)
 }

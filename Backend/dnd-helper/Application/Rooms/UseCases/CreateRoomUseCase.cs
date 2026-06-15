@@ -41,7 +41,6 @@ public sealed class CreateRoomUseCase
                 {
                     UserId = ownerUserId,
                     Role = RoomMemberRoles.GameMaster,
-                    InventoryJson = "[]",
                     JoinedAtUtc = now,
                     LastSeenAtUtc = now
                 }

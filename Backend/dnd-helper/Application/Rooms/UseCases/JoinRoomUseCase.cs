@@ -56,7 +56,6 @@ public sealed class JoinRoomUseCase
             RoomId = room.Id,
             UserId = userId,
             Role = RoomMemberRoles.Player,
-            InventoryJson = "[]",
             JoinedAtUtc = DateTime.UtcNow,
             LastSeenAtUtc = DateTime.UtcNow
         });

@@ -106,14 +106,17 @@ export function RoomsPage() {
 
   return (
     <div className="stack">
-      <section className="section-header-row">
+      <section className="surface-card page-hero">
         <div>
           <p className="eyebrow">Комнаты</p>
           <h2>Игровые комнаты</h2>
+          <p className="section-text">
+            Создавай игровые столы, подключай игроков по коду и переходи к управлению сценой без лишних блоков на экране.
+          </p>
         </div>
       </section>
 
-      <section className="surface-card">
+      <section className="surface-card room-action-panel">
         <div className="skill-pick-grid">
           <button type="button" className={`skill-toggle ${mode === 'create' ? 'selected' : ''}`} onClick={() => setMode('create')}>
             Создать комнату
@@ -148,6 +151,7 @@ export function RoomsPage() {
         <section className="surface-card">
           <div className="section-header-row">
             <div>
+              <p className="eyebrow">Список</p>
               <h2>Мои комнаты</h2>
             </div>
           </div>
@@ -165,9 +169,20 @@ export function RoomsPage() {
                   </div>
 
                   <div className="room-meta-list">
-                    <p className="muted">Код: {room.joinCode}</p>
-                    <p className="muted">Участников: {room.memberCount}</p>
-                    <p className="muted">В сети: {room.connectedMemberCount}</p>
+                    <div className="room-stat-grid">
+                      <div className="room-stat">
+                        <span>Код</span>
+                        <strong>{room.joinCode}</strong>
+                      </div>
+                      <div className="room-stat">
+                        <span>Участники</span>
+                        <strong>{room.memberCount}</strong>
+                      </div>
+                      <div className="room-stat">
+                        <span>В сети</span>
+                        <strong>{room.connectedMemberCount}</strong>
+                      </div>
+                    </div>
                   </div>
 
                   <Link to={`/rooms/${room.id}`} className="text-link">

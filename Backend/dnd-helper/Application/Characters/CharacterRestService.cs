@@ -41,9 +41,7 @@ public sealed class CharacterRestService
             currentHitPoints = maxHitPoints;
             var recoveredHitDice = Math.Max(1, totalHitDice / 2);
             spentHitDice = Math.Max(0, spentHitDice - recoveredHitDice);
-            var spentSpellSlots = DeserializeIntMap(character.SpentSpellSlotsJson);
-            spentSpellSlots.Clear();
-            character.SpentSpellSlotsJson = JsonSerializer.Serialize(spentSpellSlots, JsonOptions);
+            ResetSpentSpellSlots(character);
             details = $"Длительный отдых: хиты восстановлены полностью, кости хитов восстановлены: {recoveredHitDice}, ячейки заклинаний восстановлены.";
         }
         else if (normalizedType is "full-heal" or "heal")
@@ -61,8 +59,8 @@ public sealed class CharacterRestService
         character.SpentHitDice = Math.Clamp(spentHitDice, 0, totalHitDice);
         character.UpdatedAtUtc = DateTime.UtcNow;
 
-        var maxSpellSlots = JsonSerializer.Deserialize<List<SpellSlotDto>>(character.SpellSlotsJson, JsonOptions) ?? [];
-        var spentSpellSlotsFinal = DeserializeIntMap(character.SpentSpellSlotsJson);
+        var maxSpellSlots = ReadMaxSlots(character);
+        var spentSpellSlotsFinal = ReadSpentSlots(character);
         var currentSpellSlots = maxSpellSlots.Select(slot =>
         {
             var spent = Math.Max(0, spentSpellSlotsFinal.GetValueOrDefault(slot.SpellLevel));
@@ -108,7 +106,7 @@ public sealed class CharacterRestService
             return CharacterRestOutcome.Validation("hitDiceToSpend", $"Можно потратить не более {availableHitDice} костей хитов.");
         }
 
-        var hitDie = CharacterOptionsCatalog.Classes.FirstOrDefault(item => item.Id == character.ClassId)?.HitDie ?? 8;
+        var hitDie = character.HitDie > 0 ? character.HitDie : 8;
         var conModifier = character.ToDto(canEdit).Abilities.FirstOrDefault(item => item.Key == "CON")?.Modifier ?? 0;
         var rolls = new List<int>(Math.Max(0, hitDiceToSpend));
         var healed = 0;
@@ -131,7 +129,7 @@ public sealed class CharacterRestService
 
         if (character.ClassId.Equals("warlock", StringComparison.OrdinalIgnoreCase))
         {
-            character.SpentSpellSlotsJson = "{}";
+            ResetSpentSpellSlots(character);
             details += " Ячейки колдуна восстановлены (классовая особенность).";
         }
 
@@ -163,6 +161,35 @@ public sealed class CharacterRestService
         {
             return [];
         }
+    }
+
+    private static List<SpellSlotDto> ReadMaxSlots(CharacterEntity character)
+    {
+        return character.SpellSlots.Count > 0
+            ? character.SpellSlots
+                .OrderBy(item => item.SpellLevel)
+                .Select(item => new SpellSlotDto(item.SpellLevel, item.MaxSlots))
+                .ToList()
+            : JsonSerializer.Deserialize<List<SpellSlotDto>>(character.SpellSlotsJson, JsonOptions) ?? [];
+    }
+
+    private static Dictionary<int, int> ReadSpentSlots(CharacterEntity character)
+    {
+        return character.SpellSlots.Count > 0
+            ? character.SpellSlots
+                .Where(item => item.SpentSlots > 0)
+                .ToDictionary(item => item.SpellLevel, item => item.SpentSlots)
+            : DeserializeIntMap(character.SpentSpellSlotsJson);
+    }
+
+    private static void ResetSpentSpellSlots(CharacterEntity character)
+    {
+        foreach (var slot in character.SpellSlots)
+        {
+            slot.SpentSlots = 0;
+        }
+
+        character.SpentSpellSlotsJson = "{}";
     }
 }
 

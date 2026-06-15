@@ -69,17 +69,24 @@ export function DataCheckPage() {
     }
   }, [characterOptions, spells, equipment, monsters, conditions, query])
 
+  const activeCount = filtered[activeTab].length
+
   return (
     <div className="stack">
-      <section className="surface-card">
-        <h2>Справочник PHB</h2>
-        <p className="muted">Структурированный каталог рас, классов, предысторий, заклинаний, снаряжения, существ и состояний.</p>
-        <div className="form-grid compact">
-          <label className="full-span">
+      <section className="surface-card page-hero catalog-hero">
+        <div>
+          <p className="eyebrow">Справочник</p>
+          <h2>Справочник PHB</h2>
+          <p className="section-text">Структурированный каталог рас, классов, предысторий, заклинаний, снаряжения, существ и состояний.</p>
+        </div>
+
+        <div className="catalog-search-panel">
+          <label>
             Поиск по активной вкладке
             <input className="app-search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Например: рапира, дроу, маг..." />
           </label>
         </div>
+
         <div className="catalog-tabs">
           {catalogTabs.map((tab) => (
             <button
@@ -99,6 +106,11 @@ export function DataCheckPage() {
 
       {!isLoading && !error ? (
         <section className="surface-card catalog-surface-themed">
+          <div className="catalog-result-bar">
+            <span>{catalogTabs.find((tab) => tab.key === activeTab)?.label}</span>
+            <strong>Найдено: {activeCount}</strong>
+          </div>
+
           {activeTab === 'races' ? (
             <div className="catalog-grid">
               {filtered.races.map((race) => (
@@ -106,23 +118,25 @@ export function DataCheckPage() {
                   <h4>{race.name}</h4>
                   <p className="catalog-card__meta">{race.parentRace} • Скорость {race.speed}</p>
                   <p className="catalog-card__text">{race.summary}</p>
-                  <button
-                    type="button"
-                    className="secondary-button button-reset"
-                    onClick={() =>
-                      setDetailModal({
-                        title: race.name,
-                        subtitle: race.parentRace,
-                        blocks: [
-                          { title: 'Описание', text: race.description ?? race.summary },
-                          { title: 'Особенности', text: race.details.map((item) => `${item.title}: ${item.description}`).join('\n\n') || 'Нет данных' },
-                          { title: 'Владения', text: race.grantedSkillProficiencies.length > 0 ? race.grantedSkillProficiencies.map((item) => translateSkill(item)).join(', ') : 'Нет' },
-                        ],
-                      })
-                    }
-                  >
-                    Подробнее
-                  </button>
+                  <div className="catalog-card__footer">
+                    <button
+                      type="button"
+                      className="secondary-button button-reset"
+                      onClick={() =>
+                        setDetailModal({
+                          title: race.name,
+                          subtitle: race.parentRace,
+                          blocks: [
+                            { title: 'Описание', text: race.description ?? race.summary },
+                            { title: 'Особенности', text: race.details.map((item) => `${item.title}: ${item.description}`).join('\n\n') || 'Нет данных' },
+                            { title: 'Владения', text: race.grantedSkillProficiencies.length > 0 ? race.grantedSkillProficiencies.map((item) => translateSkill(item)).join(', ') : 'Нет' },
+                          ],
+                        })
+                      }
+                    >
+                      Подробнее
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -135,22 +149,24 @@ export function DataCheckPage() {
                   <h4>{item.name}</h4>
                   <p className="catalog-card__meta">Кость хитов d{item.hitDie}</p>
                   <p className="catalog-card__text">{item.summary}</p>
-                  <button
-                    type="button"
-                    className="secondary-button button-reset"
-                    onClick={() =>
-                      setDetailModal({
-                        title: item.name,
-                        blocks: [
-                          { title: 'Описание', text: item.description ?? item.summary },
-                          { title: 'Спасброски', text: item.savingThrowProficiencies.map((entry) => translateAbility(entry)).join(', ') || 'Нет данных' },
-                          { title: 'Классовые особенности', text: item.details.map((feature) => `${feature.title}: ${feature.description}`).join('\n\n') || 'Нет данных' },
-                        ],
-                      })
-                    }
-                  >
-                    Подробнее
-                  </button>
+                  <div className="catalog-card__footer">
+                    <button
+                      type="button"
+                      className="secondary-button button-reset"
+                      onClick={() =>
+                        setDetailModal({
+                          title: item.name,
+                          blocks: [
+                            { title: 'Описание', text: item.description ?? item.summary },
+                            { title: 'Спасброски', text: item.savingThrowProficiencies.map((entry) => translateAbility(entry)).join(', ') || 'Нет данных' },
+                            { title: 'Классовые особенности', text: item.details.map((feature) => `${feature.title}: ${feature.description}`).join('\n\n') || 'Нет данных' },
+                          ],
+                        })
+                      }
+                    >
+                      Подробнее
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -163,22 +179,24 @@ export function DataCheckPage() {
                   <h4>{item.name}</h4>
                   <p className="catalog-card__meta">Навыки: {item.grantedSkillProficiencies.length}</p>
                   <p className="catalog-card__text">{item.summary}</p>
-                  <button
-                    type="button"
-                    className="secondary-button button-reset"
-                    onClick={() =>
-                      setDetailModal({
-                        title: item.name,
-                        blocks: [
-                          { title: 'Описание', text: item.description ?? item.summary },
-                          { title: 'Навыки', text: item.grantedSkillProficiencies.map((entry) => translateSkill(entry)).join(', ') || 'Нет' },
-                          { title: 'Особенности', text: item.details.map((feature) => `${feature.title}: ${feature.description}`).join('\n\n') || 'Нет данных' },
-                        ],
-                      })
-                    }
-                  >
-                    Подробнее
-                  </button>
+                  <div className="catalog-card__footer">
+                    <button
+                      type="button"
+                      className="secondary-button button-reset"
+                      onClick={() =>
+                        setDetailModal({
+                          title: item.name,
+                          blocks: [
+                            { title: 'Описание', text: item.description ?? item.summary },
+                            { title: 'Навыки', text: item.grantedSkillProficiencies.map((entry) => translateSkill(entry)).join(', ') || 'Нет' },
+                            { title: 'Особенности', text: item.details.map((feature) => `${feature.title}: ${feature.description}`).join('\n\n') || 'Нет данных' },
+                          ],
+                        })
+                      }
+                    >
+                      Подробнее
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -191,22 +209,24 @@ export function DataCheckPage() {
                   <h4>{item.name}</h4>
                   <p className="catalog-card__meta">Круг {item.spellLevel ?? 0} • Мин. уровень {item.minCharacterLevel ?? 1}</p>
                   <p className="catalog-card__text">{item.summary ?? 'Без краткого описания'}</p>
-                  <button
-                    type="button"
-                    className="secondary-button button-reset"
-                    onClick={() =>
-                      setDetailModal({
-                        title: item.name,
-                        blocks: [
-                          { title: 'Кратко', text: item.summary ?? 'Нет данных' },
-                          { title: 'Описание', text: item.description ?? 'Нет данных' },
-                          { title: 'Классы', text: (item.classSlugs ?? []).map((entry) => translateClassSlug(entry)).join(', ') || 'Нет данных' },
-                        ],
-                      })
-                    }
-                  >
-                    Подробнее
-                  </button>
+                  <div className="catalog-card__footer">
+                    <button
+                      type="button"
+                      className="secondary-button button-reset"
+                      onClick={() =>
+                        setDetailModal({
+                          title: item.name,
+                          blocks: [
+                            { title: 'Кратко', text: item.summary ?? 'Нет данных' },
+                            { title: 'Описание', text: item.description ?? 'Нет данных' },
+                            { title: 'Классы', text: (item.classSlugs ?? []).map((entry) => translateClassSlug(entry)).join(', ') || 'Нет данных' },
+                          ],
+                        })
+                      }
+                    >
+                      Подробнее
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -225,22 +245,24 @@ export function DataCheckPage() {
                     {item.costValue ? `${item.costValue} ${translateToken(item.costUnit)} • ` : ''}
                     {item.weightLb ? `${item.weightLb} фнт.` : 'Вес не указан'}
                   </p>
-                  <button
-                    type="button"
-                    className="secondary-button button-reset"
-                    onClick={() =>
-                      setDetailModal({
-                        title: item.name,
-                        blocks: [
-                          { title: 'Категория', text: `${translateToken(item.category)}${item.subcategory ? ` / ${translateToken(item.subcategory)}` : ''}` },
-                          { title: 'Стоимость и вес', text: `${item.costValue ?? '-'} ${translateToken(item.costUnit)} • ${item.weightLb ?? '-'} фнт.` },
-                          { title: 'Боевые параметры', text: item.damageDice ? `Урон: ${item.damageDice} (${translateToken(item.damageType)})` : 'Нет боевых параметров' },
-                        ],
-                      })
-                    }
-                  >
-                    Подробнее
-                  </button>
+                  <div className="catalog-card__footer">
+                    <button
+                      type="button"
+                      className="secondary-button button-reset"
+                      onClick={() =>
+                        setDetailModal({
+                          title: item.name,
+                          blocks: [
+                            { title: 'Категория', text: `${translateToken(item.category)}${item.subcategory ? ` / ${translateToken(item.subcategory)}` : ''}` },
+                            { title: 'Стоимость и вес', text: `${item.costValue ?? '-'} ${translateToken(item.costUnit)} • ${item.weightLb ?? '-'} фнт.` },
+                            { title: 'Боевые параметры', text: item.damageDice ? `Урон: ${item.damageDice} (${translateToken(item.damageType)})` : 'Нет боевых параметров' },
+                          ],
+                        })
+                      }
+                    >
+                      Подробнее
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -253,21 +275,23 @@ export function DataCheckPage() {
                   <h4>{item.name}</h4>
                   <p className="catalog-card__meta">{translateToken(item.size)} {translateToken(item.creatureType)} • CR {item.challengeRating ?? 0}</p>
                   <p className="catalog-card__text">КД {item.armorClass ?? '-'} • ХП {item.hitPoints ?? '-'} • Скорость {item.speed ?? '-'}</p>
-                  <button
-                    type="button"
-                    className="secondary-button button-reset"
-                    onClick={() =>
-                      setDetailModal({
-                        title: item.name,
-                        blocks: [
-                          { title: 'Тип', text: `${translateToken(item.size)} ${translateToken(item.creatureType)} • ${translateToken(item.alignment)}` },
-                          { title: 'Характеристики боя', text: `КД ${item.armorClass ?? '-'} • ХП ${item.hitPoints ?? '-'} • Кости хитов ${item.hitDice ?? '-'} • Скорость ${item.speed ?? '-'}` },
-                        ],
-                      })
-                    }
-                  >
-                    Подробнее
-                  </button>
+                  <div className="catalog-card__footer">
+                    <button
+                      type="button"
+                      className="secondary-button button-reset"
+                      onClick={() =>
+                        setDetailModal({
+                          title: item.name,
+                          blocks: [
+                            { title: 'Тип', text: `${translateToken(item.size)} ${translateToken(item.creatureType)} • ${translateToken(item.alignment)}` },
+                            { title: 'Характеристики боя', text: `КД ${item.armorClass ?? '-'} • ХП ${item.hitPoints ?? '-'} • Кости хитов ${item.hitDice ?? '-'} • Скорость ${item.speed ?? '-'}` },
+                          ],
+                        })
+                      }
+                    >
+                      Подробнее
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -279,18 +303,20 @@ export function DataCheckPage() {
                 <article key={item.slug} className="catalog-card">
                   <h4>{item.name}</h4>
                   <p className="catalog-card__text">{item.description}</p>
-                  <button
-                    type="button"
-                    className="secondary-button button-reset"
-                    onClick={() =>
-                      setDetailModal({
-                        title: item.name,
-                        blocks: [{ title: 'Описание состояния', text: item.description }],
-                      })
-                    }
-                  >
-                    Подробнее
-                  </button>
+                  <div className="catalog-card__footer">
+                    <button
+                      type="button"
+                      className="secondary-button button-reset"
+                      onClick={() =>
+                        setDetailModal({
+                          title: item.name,
+                          blocks: [{ title: 'Описание состояния', text: item.description }],
+                        })
+                      }
+                    >
+                      Подробнее
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>

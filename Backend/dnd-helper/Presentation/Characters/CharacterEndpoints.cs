@@ -22,7 +22,7 @@ public static class CharacterEndpoints
             }
 
             var isGameMaster = await userManager.IsInRoleAsync(user, ApplicationRoles.GameMaster);
-            var query = dbContext.Characters.AsNoTracking();
+            var query = dbContext.Characters.AsNoTracking().IncludeCharacterState();
             if (!isGameMaster)
             {
                 query = query.Where(character => character.OwnerUserId == user.Id);
@@ -44,7 +44,10 @@ public static class CharacterEndpoints
                 return Results.Unauthorized();
             }
 
-            var character = await dbContext.Characters.AsNoTracking().FirstOrDefaultAsync(item => item.Id == id);
+            var character = await dbContext.Characters
+                .AsNoTracking()
+                .IncludeCharacterState()
+                .FirstOrDefaultAsync(item => item.Id == id);
             if (character is null)
             {
                 return Results.NotFound();
@@ -87,7 +90,10 @@ public static class CharacterEndpoints
                 return Results.Unauthorized();
             }
 
-            var character = await dbContext.Characters.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+            var character = await dbContext.Characters
+                .AsNoTracking()
+                .IncludeCharacterState()
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (character is null)
             {
                 return Results.NotFound();

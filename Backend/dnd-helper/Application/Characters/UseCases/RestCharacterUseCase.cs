@@ -22,7 +22,9 @@ public sealed class RestCharacterUseCase
         bool isGameMaster,
         CancellationToken cancellationToken)
     {
-        var character = await dbContext.Characters.FirstOrDefaultAsync(item => item.Id == characterId, cancellationToken);
+        var character = await dbContext.Characters
+            .IncludeCharacterState()
+            .FirstOrDefaultAsync(item => item.Id == characterId, cancellationToken);
         if (character is null)
         {
             return UseCaseResult<CharacterRestResultDto>.NotFound();

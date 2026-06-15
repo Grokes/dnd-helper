@@ -4,12 +4,15 @@ import { useAuth } from '../features/auth/model/AuthProvider'
 import {
   addRoomMonster,
   attackRoomCharacterByMonster,
+  endRoomCombat,
   applyRoomMonsterDamage,
+  finishRoomTurn,
   getRoomById,
   getRoomMonsters,
   removeRoomMonster,
   rollRoomMonsterDamage,
   selectRoomCharacter,
+  startRoomCombat,
   updateRoomMemberRole,
 } from '../features/rooms/api/roomsApi'
 import { getMyCharacters } from '../features/characters/api/charactersApi'
@@ -129,6 +132,45 @@ export function RoomDetailPage() {
     }
   }
 
+  async function handleStartCombat() {
+    setIsSaving(true)
+    try {
+      const updatedRoom = await startRoomCombat(id)
+      setRoom(updatedRoom)
+      pushNotice('Бой начат. Инициатива рассчитана автоматически.', 'success')
+    } catch (caughtError) {
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось начать бой.'), 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleEndCombat() {
+    setIsSaving(true)
+    try {
+      const updatedRoom = await endRoomCombat(id)
+      setRoom(updatedRoom)
+      pushNotice('Бой завершён.', 'success')
+    } catch (caughtError) {
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось завершить бой.'), 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleFinishTurn() {
+    setIsSaving(true)
+    try {
+      const updatedRoom = await finishRoomTurn(id)
+      setRoom(updatedRoom)
+      pushNotice('Ход завершён. Передаём инициативу дальше.', 'success')
+    } catch (caughtError) {
+      pushNotice(getApiErrorMessage(caughtError, 'Не удалось завершить ход.'), 'error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function handleAddMonster(monsterSlug: string) {
     if (!room || !monsterSlug) return
     setIsSaving(true)
@@ -158,6 +200,27 @@ export function RoomDetailPage() {
       const result = await applyRoomMonsterDamage(id, monsterId, value)
       if (result.removed) {
         setRoomMonsters((current) => current.filter((monster) => monster.id !== result.monsterId))
+        setRoom((current) => {
+          if (!current) return current
+          const nextTurnOrder = current.combat.turnOrder.filter((combatant) => combatant.monsterId !== result.monsterId)
+          const nextCurrentCombatant = current.combat.currentCombatant?.monsterId === result.monsterId
+            ? (nextTurnOrder[0] ?? null)
+            : current.combat.currentCombatant
+
+          return {
+            ...current,
+            combat: {
+              ...current.combat,
+              isActive: nextTurnOrder.length > 0 ? current.combat.isActive : false,
+              currentCombatant: nextCurrentCombatant,
+              currentCombatantId: nextCurrentCombatant?.id ?? null,
+              turnOrder: nextTurnOrder.map((combatant) => ({
+                ...combatant,
+                isCurrentTurn: combatant.id === nextCurrentCombatant?.id,
+              })),
+            },
+          }
+        })
         setMonsterTargets((current) => {
           const { [monsterId]: _, ...next } = current
           return next
@@ -167,6 +230,32 @@ export function RoomDetailPage() {
         setRoomMonsters((current) =>
           current.map((monster) => (monster.id === result.monster!.id ? result.monster! : monster)),
         )
+        setRoom((current) => {
+          if (!current || !result.monster) return current
+
+          return {
+            ...current,
+            combat: {
+              ...current.combat,
+              currentCombatant:
+                current.combat.currentCombatant?.monsterId === result.monster.id
+                  ? {
+                    ...current.combat.currentCombatant,
+                    currentHitPoints: result.monster.currentHitPoints,
+                    maxHitPoints: result.monster.maxHitPoints,
+                  }
+                  : current.combat.currentCombatant,
+              turnOrder: current.combat.turnOrder.map((combatant) =>
+                combatant.monsterId === result.monster!.id
+                  ? {
+                    ...combatant,
+                    currentHitPoints: result.monster!.currentHitPoints,
+                    maxHitPoints: result.monster!.maxHitPoints,
+                  }
+                  : combatant),
+            },
+          }
+        })
         pushNotice(
           `${result.monster.name} получает ${value} урона. ХП: ${result.monster.currentHitPoints}/${result.monster.maxHitPoints}.`,
           'success',
@@ -198,6 +287,27 @@ export function RoomDetailPage() {
       const target = roomMonsters.find((monster) => monster.id === monsterId)
       await removeRoomMonster(id, monsterId)
       setRoomMonsters((current) => current.filter((monster) => monster.id !== monsterId))
+      setRoom((current) => {
+        if (!current) return current
+        const nextTurnOrder = current.combat.turnOrder.filter((combatant) => combatant.monsterId !== monsterId)
+        const nextCurrentCombatant = current.combat.currentCombatant?.monsterId === monsterId
+          ? (nextTurnOrder[0] ?? null)
+          : current.combat.currentCombatant
+
+        return {
+          ...current,
+          combat: {
+            ...current.combat,
+            isActive: nextTurnOrder.length > 0 ? current.combat.isActive : false,
+            currentCombatant: nextCurrentCombatant,
+            currentCombatantId: nextCurrentCombatant?.id ?? null,
+            turnOrder: nextTurnOrder.map((combatant) => ({
+              ...combatant,
+              isCurrentTurn: combatant.id === nextCurrentCombatant?.id,
+            })),
+          },
+        }
+      })
       setMonsterTargets((current) => {
         const { [monsterId]: _, ...next } = current
         return next
@@ -238,6 +348,25 @@ export function RoomDetailPage() {
                 }
                 : character),
           })),
+          combat: {
+            ...current.combat,
+            currentCombatant:
+              current.combat.currentCombatant?.characterId === result.targetCharacterId
+                ? {
+                  ...current.combat.currentCombatant,
+                  currentHitPoints: result.targetCurrentHitPoints,
+                  maxHitPoints: result.targetMaxHitPoints,
+                }
+                : current.combat.currentCombatant,
+            turnOrder: current.combat.turnOrder.map((combatant) =>
+              combatant.characterId === result.targetCharacterId
+                ? {
+                  ...combatant,
+                  currentHitPoints: result.targetCurrentHitPoints,
+                  maxHitPoints: result.targetMaxHitPoints,
+                }
+                : combatant),
+          },
         }
       })
 
@@ -261,6 +390,11 @@ export function RoomDetailPage() {
   const roomCharacterTargets = room
     ? room.members.flatMap((member) => member.characters).filter((character, index, list) => list.findIndex((item) => item.id === character.id) === index)
     : []
+  const currentTurn = room?.combat.currentCombatant ?? null
+  const canFinishCurrentTurn = Boolean(
+    room?.combat.isActive &&
+    (room.canManageMembers || (currentTurn?.type === 'Character' && currentTurn.ownerUserId === user?.id)),
+  )
 
   return (
     <div className="stack">
@@ -280,9 +414,50 @@ export function RoomDetailPage() {
               </div>
             </div>
             <div className="room-hero__actions">
+              {room.canManageMembers ? (
+                room.combat.isActive ? (
+                  <button type="button" className="secondary-button button-reset" onClick={() => void handleEndCombat()} disabled={isSaving}>
+                    Закончить бой
+                  </button>
+                ) : (
+                  <button type="button" className="primary-button button-reset" onClick={() => void handleStartCombat()} disabled={isSaving}>
+                    Начать бой
+                  </button>
+                )
+              ) : null}
+              {room.combat.isActive ? (
+                <button type="button" className="secondary-button button-reset" onClick={() => void handleFinishTurn()} disabled={isSaving || !canFinishCurrentTurn}>
+                  Закончить ход
+                </button>
+              ) : null}
               <Link to="/rooms" className="text-link">Ко всем комнатам</Link>
             </div>
           </section>
+
+          {room.combat.isActive ? (
+            <section className="surface-card room-initiative-panel">
+              <div className="section-header-row">
+                <div>
+                  <h3>Инициатива</h3>
+                  <p className="muted">Раунд {room.combat.roundNumber}</p>
+                </div>
+                {currentTurn ? <span className="pill pill--active-turn">Сейчас ходит: {currentTurn.name}</span> : null}
+              </div>
+              <div className="room-turn-order">
+                {room.combat.turnOrder.map((combatant) => (
+                  <article
+                    key={combatant.id}
+                    className={`room-turn-chip ${combatant.isCurrentTurn ? 'room-turn-chip--active' : ''}`}
+                  >
+                    <strong>{combatant.name}</strong>
+                    <span>{combatant.type === 'Monster' ? 'Чудовище' : 'Персонаж'}</span>
+                    <span>Инициатива {combatant.initiative}</span>
+                    <span>ХП {combatant.currentHitPoints}/{combatant.maxHitPoints}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="surface-card">
             <h3>Мои персонажи в комнате</h3>
@@ -320,7 +495,10 @@ export function RoomDetailPage() {
                     {member.characters.length > 0 ? (
                       <div className="room-character-grid">
                         {member.characters.map((character) => (
-                          <article key={character.id} className="character-card room-character-card">
+                          <article
+                            key={character.id}
+                            className={`character-card room-character-card ${currentTurn?.characterId === character.id ? 'room-active-combatant' : ''}`}
+                          >
                             <img
                               className="character-card__portrait"
                               src={getCharacterPortrait(character.name, character.race, character.className)}
@@ -390,7 +568,10 @@ export function RoomDetailPage() {
             <div className="room-monster-grid">
               {roomMonsters.length > 0 ? (
                 roomMonsters.map((monster) => (
-                  <article key={monster.id} className="surface-card room-monster-card">
+                  <article
+                    key={monster.id}
+                    className={`surface-card room-monster-card ${currentTurn?.monsterId === monster.id ? 'room-active-combatant' : ''}`}
+                  >
                     <div className="section-header-row">
                       <h4>{monster.name}</h4>
                       <span className="pill">CR {monster.challengeRating}</span>

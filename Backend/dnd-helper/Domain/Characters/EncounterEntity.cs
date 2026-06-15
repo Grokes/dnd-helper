@@ -4,7 +4,12 @@ public sealed class EncounterEntity
 {
     public Guid Id { get; set; }
     public Guid RoomId { get; set; }
+    public RoomEntity? Room { get; set; }
     public string Name { get; set; } = string.Empty;
+    public bool IsCombatActive { get; set; }
+    public int RoundNumber { get; set; }
+    public Guid? CurrentTurnCombatantId { get; set; }
+    public DateTime? TurnStartedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public List<EncounterCombatantEntity> Combatants { get; set; } = [];
 }

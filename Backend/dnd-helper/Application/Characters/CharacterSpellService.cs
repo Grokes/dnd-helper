@@ -27,7 +27,9 @@ public sealed class CharacterSpellService
             return CharacterCastSpellOutcome.Validation("spellSlug", "Выбери заклинание.");
         }
 
-        var knownSpells = JsonSerializer.Deserialize<List<string>>(character.KnownSpellsJson, JsonOptions) ?? [];
+        var knownSpells = character.KnownSpells.Count > 0
+            ? character.KnownSpells.Select(item => item.SpellSlug).ToList()
+            : JsonSerializer.Deserialize<List<string>>(character.KnownSpellsJson, JsonOptions) ?? [];
         if (!knownSpells.Any(item => item.Equals(spellSlug, StringComparison.OrdinalIgnoreCase)))
         {
             return CharacterCastSpellOutcome.Validation("spellSlug", "Персонаж не знает это заклинание.");
@@ -40,8 +42,8 @@ public sealed class CharacterSpellService
             return CharacterCastSpellOutcome.NotFound();
         }
 
-        var maxSlots = JsonSerializer.Deserialize<List<SpellSlotDto>>(character.SpellSlotsJson, JsonOptions) ?? [];
-        var spentSlots = DeserializeIntMap(character.SpentSpellSlotsJson);
+        var maxSlots = ReadMaxSlots(character);
+        var spentSlots = ReadSpentSlots(character);
         var spellLevel = Math.Max(0, spell.SpellLevel);
         var chosenSlotLevel = request.SlotLevel;
         var consumedSlot = false;
@@ -56,12 +58,18 @@ public sealed class CharacterSpellService
             }
 
             spentSlots[levelToUse] = Math.Max(0, spentSlots.GetValueOrDefault(levelToUse)) + 1;
+            if (character.SpellSlots.Count > 0)
+            {
+                var slotRow = character.SpellSlots.First(item => item.SpellLevel == levelToUse);
+                slotRow.SpentSlots = spentSlots[levelToUse];
+            }
             consumedSlot = true;
             chosenSlotLevel = levelToUse;
             message = $"Заклинание «{spell.Name}» применено. Израсходована ячейка круга {levelToUse}.";
         }
 
         character.SpentSpellSlotsJson = JsonSerializer.Serialize(spentSlots, JsonOptions);
+        character.SyncSpellSlotSnapshotFromRows();
         character.UpdatedAtUtc = DateTime.UtcNow;
 
         var currentSlots = maxSlots.Select(item =>
@@ -203,6 +211,25 @@ public sealed class CharacterSpellService
         {
             return [];
         }
+    }
+
+    private static List<SpellSlotDto> ReadMaxSlots(CharacterEntity character)
+    {
+        return character.SpellSlots.Count > 0
+            ? character.SpellSlots
+                .OrderBy(item => item.SpellLevel)
+                .Select(item => new SpellSlotDto(item.SpellLevel, item.MaxSlots))
+                .ToList()
+            : JsonSerializer.Deserialize<List<SpellSlotDto>>(character.SpellSlotsJson, JsonOptions) ?? [];
+    }
+
+    private static Dictionary<int, int> ReadSpentSlots(CharacterEntity character)
+    {
+        return character.SpellSlots.Count > 0
+            ? character.SpellSlots
+                .Where(item => item.SpentSlots > 0)
+                .ToDictionary(item => item.SpellLevel, item => item.SpentSlots)
+            : DeserializeIntMap(character.SpentSpellSlotsJson);
     }
 }
 

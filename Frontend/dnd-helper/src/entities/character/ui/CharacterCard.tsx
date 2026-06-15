@@ -26,16 +26,35 @@ export function CharacterCard({ character }: CharacterCardProps) {
           <span className="pill">Ур. {character.level}</span>
         </div>
 
-        <div className="skill-tags">
-          {character.skills.slice(0, 3).map((skill) => (
-            <span key={skill.skillId} className="skill-tag">
-              {formatSkillLevel(skill)}
-            </span>
-          ))}
+        <div className="character-card__stats" aria-label="Ключевые показатели">
+          <div className="character-card__stat">
+            <span>КД</span>
+            <strong>{character.armorClass}</strong>
+          </div>
+          <div className="character-card__stat">
+            <span>Хиты</span>
+            <strong>
+              {character.currentHitPoints}/{character.maxHitPoints}
+            </strong>
+          </div>
+          <div className="character-card__stat">
+            <span>Вним.</span>
+            <strong>{character.passivePerception}</strong>
+          </div>
         </div>
-        <Link to={`/characters/${character.id}`} className="text-link">
-          Открыть
-        </Link>
+
+        <div className="character-card__footer">
+          <div className="skill-tags">
+            {character.skills.slice(0, 3).map((skill) => (
+              <span key={skill.skillId} className="skill-tag">
+                {formatSkillLevel(skill)}
+              </span>
+            ))}
+          </div>
+          <Link to={`/characters/${character.id}`} className="text-link">
+            Открыть лист
+          </Link>
+        </div>
       </div>
     </article>
   )

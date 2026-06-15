@@ -25,12 +25,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<UpdateRoomPresenceUseCase>();
         services.AddScoped<UpdateRoomMemberRoleUseCase>();
         services.AddScoped<RoomCombatService>();
+        services.AddScoped<RoomInitiativeService>();
         services.AddScoped<ListRoomMonstersUseCase>();
         services.AddScoped<AddRoomMonsterUseCase>();
         services.AddScoped<ApplyRoomMonsterDamageUseCase>();
         services.AddScoped<DeleteRoomMonsterUseCase>();
         services.AddScoped<AttackWithRoomMonsterUseCase>();
         services.AddScoped<RollRoomMonsterDamageUseCase>();
+        services.AddScoped<StartRoomCombatUseCase>();
+        services.AddScoped<EndRoomCombatUseCase>();
+        services.AddScoped<FinishRoomTurnUseCase>();
         services.AddScoped<RoomAccessService>();
         services.AddScoped<RoomMonsterService>();
 

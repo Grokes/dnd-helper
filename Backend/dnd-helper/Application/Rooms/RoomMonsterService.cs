@@ -98,6 +98,7 @@ public sealed class RoomMonsterService
         {
             var removedMonsterId = combatant.Id;
             var removedMonsterName = combatant.Name;
+            MoveTurnIfCurrentCombatantIsRemoved(combatant.Encounter, removedMonsterId);
             dbContext.EncounterCombatants.Remove(combatant);
             await dbContext.SaveChangesAsync(cancellationToken);
             return RoomMonsterServiceOutcome<RoomMonsterDamageResultDto>.Success(new RoomMonsterDamageResultDto(
@@ -123,6 +124,7 @@ public sealed class RoomMonsterService
             return false;
         }
 
+        MoveTurnIfCurrentCombatantIsRemoved(combatant.Encounter, combatant.Id);
         dbContext.EncounterCombatants.Remove(combatant);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
@@ -215,11 +217,39 @@ public sealed class RoomMonsterService
     {
         return dbContext.EncounterCombatants
             .Include(existingCombatant => existingCombatant.Encounter)
+            .ThenInclude(encounter => encounter!.Combatants)
             .FirstOrDefaultAsync(existingCombatant =>
                 existingCombatant.Id == monsterId &&
                 existingCombatant.Encounter!.RoomId == roomId &&
                 !existingCombatant.IsPlayerCharacter,
                 cancellationToken);
+    }
+
+    private static void MoveTurnIfCurrentCombatantIsRemoved(EncounterEntity? encounter, Guid removedCombatantId)
+    {
+        if (encounter is not { IsCombatActive: true } || encounter.CurrentTurnCombatantId != removedCombatantId)
+        {
+            return;
+        }
+
+        var nextCombatant = encounter.Combatants
+            .Where(combatant => combatant.Id != removedCombatantId && combatant.CurrentHitPoints > 0)
+            .OrderByDescending(combatant => combatant.Initiative)
+            .ThenByDescending(combatant => combatant.IsPlayerCharacter)
+            .ThenBy(combatant => combatant.Name)
+            .FirstOrDefault();
+
+        if (nextCombatant is null)
+        {
+            encounter.IsCombatActive = false;
+            encounter.RoundNumber = 0;
+            encounter.CurrentTurnCombatantId = null;
+            encounter.TurnStartedAtUtc = null;
+            return;
+        }
+
+        encounter.CurrentTurnCombatantId = nextCombatant.Id;
+        encounter.TurnStartedAtUtc = DateTime.UtcNow;
     }
 }
 

@@ -7,6 +7,15 @@ namespace dnd_helper.Infrastructure.Persistence.Postgres;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<ApplicationUser>(options)
 {
     public DbSet<CharacterEntity> Characters => Set<CharacterEntity>();
+    public DbSet<CharacterBaseAbilityEntity> CharacterBaseAbilities => Set<CharacterBaseAbilityEntity>();
+    public DbSet<CharacterAbilityEntity> CharacterAbilities => Set<CharacterAbilityEntity>();
+    public DbSet<CharacterSelectedOptionEntity> CharacterSelectedOptions => Set<CharacterSelectedOptionEntity>();
+    public DbSet<CharacterSkillProficiencyEntity> CharacterSkillProficiencies => Set<CharacterSkillProficiencyEntity>();
+    public DbSet<CharacterSavingThrowProficiencyEntity> CharacterSavingThrowProficiencies => Set<CharacterSavingThrowProficiencyEntity>();
+    public DbSet<CharacterKnownSpellEntity> CharacterKnownSpells => Set<CharacterKnownSpellEntity>();
+    public DbSet<CharacterSpellSlotEntity> CharacterSpellSlots => Set<CharacterSpellSlotEntity>();
+    public DbSet<CharacterInventoryItemEntity> CharacterInventoryItems => Set<CharacterInventoryItemEntity>();
+    public DbSet<CharacterCalculationTraceEntryEntity> CharacterCalculationTraceEntries => Set<CharacterCalculationTraceEntryEntity>();
     public DbSet<RoomEntity> Rooms => Set<RoomEntity>();
     public DbSet<RoomMembershipEntity> RoomMemberships => Set<RoomMembershipEntity>();
     public DbSet<RoomMembershipCharacterEntity> RoomMembershipCharacters => Set<RoomMembershipCharacterEntity>();
@@ -33,6 +42,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.Property(item => item.Background).HasMaxLength(120);
             entity.Property(item => item.Alignment).HasMaxLength(80);
             entity.Property(item => item.WeaponDamage).HasMaxLength(80).HasColumnName("weapon_damage");
+            entity.Property(item => item.HitDie).HasColumnName("hit_die");
             entity.Property(item => item.MaxHitPoints).HasColumnName("max_hit_points");
             entity.Property(item => item.CurrentHitPoints).HasColumnName("current_hit_points");
             entity.Property(item => item.SpentHitDice).HasColumnName("spent_hit_dice");
@@ -52,6 +62,138 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasOne(item => item.OwnerUser)
                 .WithMany()
                 .HasForeignKey(item => item.OwnerUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterBaseAbilityEntity>(entity =>
+        {
+            entity.ToTable("character_base_abilities");
+            entity.HasKey(item => new { item.CharacterId, item.Ability });
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.Ability).HasMaxLength(8).HasColumnName("ability");
+            entity.Property(item => item.Score).HasColumnName("score");
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.BaseAbilities)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterAbilityEntity>(entity =>
+        {
+            entity.ToTable("character_abilities");
+            entity.HasKey(item => new { item.CharacterId, item.Ability });
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.Ability).HasMaxLength(8).HasColumnName("ability");
+            entity.Property(item => item.Score).HasColumnName("score");
+            entity.Property(item => item.Modifier).HasColumnName("modifier");
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.Abilities)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterSelectedOptionEntity>(entity =>
+        {
+            entity.ToTable("character_selected_options");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.Source).HasMaxLength(40).HasColumnName("source");
+            entity.Property(item => item.OptionType).HasMaxLength(40).HasColumnName("option_type");
+            entity.Property(item => item.Value).HasMaxLength(120).HasColumnName("value");
+            entity.HasIndex(item => new { item.CharacterId, item.Source, item.OptionType, item.Value }).IsUnique();
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.SelectedOptions)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterSkillProficiencyEntity>(entity =>
+        {
+            entity.ToTable("character_skill_proficiencies");
+            entity.HasKey(item => new { item.CharacterId, item.SkillId });
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.SkillId).HasMaxLength(80).HasColumnName("skill_id");
+            entity.Property(item => item.Bonus).HasColumnName("bonus");
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.SkillProficiencies)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterSavingThrowProficiencyEntity>(entity =>
+        {
+            entity.ToTable("character_saving_throw_proficiencies");
+            entity.HasKey(item => new { item.CharacterId, item.Ability });
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.Ability).HasMaxLength(8).HasColumnName("ability");
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.SavingThrowProficiencies)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterKnownSpellEntity>(entity =>
+        {
+            entity.ToTable("character_known_spells");
+            entity.HasKey(item => new { item.CharacterId, item.SpellSlug });
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.SpellSlug).HasMaxLength(120).HasColumnName("spell_slug");
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.KnownSpells)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterSpellSlotEntity>(entity =>
+        {
+            entity.ToTable("character_spell_slots");
+            entity.HasKey(item => new { item.CharacterId, item.SpellLevel });
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.SpellLevel).HasColumnName("spell_level");
+            entity.Property(item => item.MaxSlots).HasColumnName("max_slots");
+            entity.Property(item => item.SpentSlots).HasColumnName("spent_slots");
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.SpellSlots)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterInventoryItemEntity>(entity =>
+        {
+            entity.ToTable("character_inventory_items");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.RoomId).HasColumnName("room_id");
+            entity.Property(item => item.ItemRef).HasMaxLength(160).HasColumnName("item_ref");
+            entity.Property(item => item.Quantity).HasColumnName("quantity");
+            entity.Property(item => item.EquipmentSlot).HasMaxLength(40).HasColumnName("equipment_slot");
+            entity.Property(item => item.IsEquipped).HasColumnName("is_equipped");
+            entity.Property(item => item.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(item => new { item.CharacterId, item.RoomId, item.ItemRef, item.EquipmentSlot });
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.InventoryItems)
+                .HasForeignKey(item => item.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CharacterCalculationTraceEntryEntity>(entity =>
+        {
+            entity.ToTable("character_calculation_trace_entries");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.CharacterId).HasColumnName("character_id");
+            entity.Property(item => item.Order).HasColumnName("entry_order");
+            entity.Property(item => item.Target).HasMaxLength(120).HasColumnName("target");
+            entity.Property(item => item.Source).HasMaxLength(160).HasColumnName("source");
+            entity.Property(item => item.Reason).HasColumnName("reason");
+            entity.Property(item => item.Value).HasColumnName("value");
+            entity.Property(item => item.Operation).HasMaxLength(40).HasColumnName("operation");
+            entity.HasIndex(item => new { item.CharacterId, item.Order });
+            entity.HasOne(item => item.Character)
+                .WithMany(character => character.CalculationTraceEntries)
+                .HasForeignKey(item => item.CharacterId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -79,7 +221,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasKey(item => new { item.RoomId, item.UserId });
             entity.Property(item => item.UserId).HasMaxLength(450).HasColumnName("user_id");
             entity.Property(item => item.Role).HasMaxLength(40).HasColumnName("role");
-            entity.Property(item => item.InventoryJson).HasColumnName("inventory_json");
             entity.Property(item => item.JoinedAtUtc).HasColumnName("joined_at_utc");
             entity.Property(item => item.LastSeenAtUtc).HasColumnName("last_seen_at_utc");
 
@@ -118,7 +259,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             entity.HasKey(item => item.Id);
             entity.Property(item => item.RoomId).HasColumnName("room_id");
             entity.Property(item => item.Name).HasMaxLength(160);
+            entity.Property(item => item.IsCombatActive).HasColumnName("is_combat_active");
+            entity.Property(item => item.RoundNumber).HasColumnName("round_number");
+            entity.Property(item => item.CurrentTurnCombatantId).HasColumnName("current_turn_combatant_id");
+            entity.Property(item => item.TurnStartedAtUtc).HasColumnName("turn_started_at_utc");
             entity.Property(item => item.CreatedAtUtc).HasColumnName("created_at_utc");
+
+            entity.HasOne(item => item.Room)
+                .WithMany(room => room.Encounters)
+                .HasForeignKey(item => item.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<EncounterCombatantEntity>(entity =>

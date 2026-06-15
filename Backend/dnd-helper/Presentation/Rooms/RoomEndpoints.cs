@@ -147,6 +147,57 @@ public static class RoomEndpoints
             return result.ToHttpResult();
         }).RequireAuthorization();
 
+        endpoints.MapPost("/api/rooms/{id:guid}/combat/start", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            UserManager<ApplicationUser> userManager,
+            StartRoomCombatUseCase useCase,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var result = await useCase.ExecuteAsync(id, user.Id, cancellationToken);
+            return result.ToHttpResult();
+        }).RequireAuthorization();
+
+        endpoints.MapPost("/api/rooms/{id:guid}/combat/end", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            UserManager<ApplicationUser> userManager,
+            EndRoomCombatUseCase useCase,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var result = await useCase.ExecuteAsync(id, user.Id, cancellationToken);
+            return result.ToHttpResult();
+        }).RequireAuthorization();
+
+        endpoints.MapPost("/api/rooms/{id:guid}/combat/turn/end", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            UserManager<ApplicationUser> userManager,
+            FinishRoomTurnUseCase useCase,
+            CancellationToken cancellationToken) =>
+        {
+            var user = await userManager.GetUserAsync(principal);
+            if (user is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var result = await useCase.ExecuteAsync(id, user.Id, cancellationToken);
+            return result.ToHttpResult();
+        }).RequireAuthorization();
+
         endpoints.MapGet("/api/rooms/{id:guid}/monsters", async (
             Guid id,
             ClaimsPrincipal principal,

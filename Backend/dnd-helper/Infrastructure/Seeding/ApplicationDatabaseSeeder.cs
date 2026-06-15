@@ -74,14 +74,12 @@ public sealed class ApplicationDatabaseSeeder(
                     {
                         UserId = gameMasterUser.Id,
                         Role = RoomMemberRoles.GameMaster,
-                        InventoryJson = "[]",
                         JoinedAtUtc = DateTime.UtcNow
                     },
                     new RoomMembershipEntity
                     {
                         UserId = playerUser.Id,
                         Role = RoomMemberRoles.Player,
-                        InventoryJson = "[\"Лютня\", \"Кожаный доспех\"]",
                         JoinedAtUtc = DateTime.UtcNow,
                         Characters =
                         [
